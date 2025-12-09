@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import api, { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -16,12 +16,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
 
-  const API_URL = process.env.REACT_APP_API_URL;
-
-  // Configurar axios con token
+  // Revalidar token cuando cambie
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       verificarToken();
     } else {
       setLoading(false);
@@ -30,7 +27,7 @@ export const AuthProvider = ({ children }) => {
 
   const verificarToken = async () => {
     try {
-      const response = await axios.get(`${API_URL}/auth/verificar`);
+      const response = await authAPI.verificar();
       setUsuario(response.data.usuario);
     } catch (error) {
       console.error('Error al verificar token:', error);
@@ -42,12 +39,15 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, { email, password });
+      const response = await authAPI.login(email, password);
       const { token, usuario } = response.data;
       
       localStorage.setItem('token', token);
       setToken(token);
       setUsuario(usuario);
+      
+      // Asegurar que el token esté disponible inmediatamente en el cliente compartido
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       return { success: true, usuario };
     } catch (error) {
@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setToken(null);
     setUsuario(null);
-    delete axios.defaults.headers.common['Authorization'];
+    delete api.defaults.headers.common['Authorization'];
   };
 
   const value = {
