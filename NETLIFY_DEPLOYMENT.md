@@ -26,9 +26,8 @@ Crea este archivo en la raíz del proyecto:
 **netlify.toml**
 ```toml
 [build]
-  base = "frontend"
-  command = "npm run build"
-  publish = "build"
+  command = "npm install --prefix netlify/functions && npm install --prefix frontend && npm run build --prefix frontend"
+  publish = "frontend/build"
   functions = "netlify/functions"
 
 [build.environment]
