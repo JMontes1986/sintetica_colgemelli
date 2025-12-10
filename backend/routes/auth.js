@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const supabase = require('../config/supabase');
+const getSupabase = require('../config/supabase');
 const { verificarToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -9,6 +9,7 @@ const router = express.Router();
 // Login
 router.post('/login', async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -60,6 +61,9 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Error en login:', error);
+    if (error.code === 'SUPABASE_CONFIG_MISSING') {
+      return res.status(503).json({ error: error.message });
+    }
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
 });
@@ -79,6 +83,7 @@ router.get('/verificar', verificarToken, (req, res) => {
 // Registro (solo para testing, en producción controlar mejor)
 router.post('/registro', async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { email, nombre, password, rol = 'publico' } = req.body;
 
     if (!email || !nombre || !password) {
@@ -113,6 +118,9 @@ router.post('/registro', async (req, res) => {
     });
   } catch (error) {
     console.error('Error en registro:', error);
+    if (error.code === 'SUPABASE_CONFIG_MISSING') {
+      return res.status(503).json({ error: error.message });
+    }
     res.status(500).json({ error: 'Error al crear usuario' });
   }
 });
