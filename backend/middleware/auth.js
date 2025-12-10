@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken');
-const supabase = require('../config/supabase');
+const getSupabase = require('../config/supabase');
 
 // Middleware para verificar token JWT
 const verificarToken = async (req, res, next) => {
   try {
+    const supabase = getSupabase();
     const token = req.headers.authorization?.split(' ')[1];
     
     if (!token) {
@@ -26,6 +27,9 @@ const verificarToken = async (req, res, next) => {
     req.usuario = usuario;
     next();
   } catch (error) {
+    if (error.code === 'SUPABASE_CONFIG_MISSING') {
+      return res.status(503).json({ error: error.message });
+    }
     return res.status(401).json({ error: 'Token inválido' });
   }
 };
