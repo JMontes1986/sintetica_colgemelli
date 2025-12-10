@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api, { authAPI } from '../services/api';
 
 const AuthContext = createContext();
@@ -16,16 +16,14 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
 
-  // Revalidar token cuando cambie
-  useEffect(() => {
-    if (token) {
-      verificarToken();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+  const logout = useCallback(() => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUsuario(null);
+    delete api.defaults.headers.common['Authorization'];
+  }, []);
 
-  const verificarToken = async () => {
+  const verificarToken = useCallback(async () => {
     try {
       const response = await authAPI.verificar();
       setUsuario(response.data.usuario);
@@ -35,7 +33,16 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout]);
+
+  // Revalidar token cuando cambie
+  useEffect(() => {
+    if (token) {
+      verificarToken();
+    } else {
+      setLoading(false);
+    }
+  }, [token, verificarToken]);
 
   const login = async (email, password) => {
     try {
@@ -56,13 +63,6 @@ export const AuthProvider = ({ children }) => {
         error: error.response?.data?.error || 'Error al iniciar sesión'
       };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUsuario(null);
-    delete api.defaults.headers.common['Authorization'];
   };
 
   const value = {
