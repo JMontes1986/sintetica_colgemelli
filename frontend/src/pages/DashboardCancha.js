@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { reservasAPI } from '../services/api';
@@ -22,11 +22,7 @@ const DashboardCancha = () => {
     hora: '10:00'
   });
 
-  useEffect(() => {
-    cargarReservas();
-  }, [filtro]);
-
-  const cargarReservas = async () => {
+  const cargarReservas = useCallback(async () => {
     try {
       setLoading(true);
       const params = filtro !== 'todas' ? { estado: filtro === 'pendientes' ? 'Pendiente' : 'Jugado' } : {};
@@ -38,7 +34,11 @@ const DashboardCancha = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filtro]);
+
+  useEffect(() => {
+    cargarReservas();
+  }, [cargarReservas]);
 
   const cambiarEstado = async (id, nuevoEstado) => {
     try {
