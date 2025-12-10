@@ -10,18 +10,32 @@ const healthRoutes = require('./routes/health');
 
 const app = express();
 
-const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
-  .split(',')
+// Permitir el dominio configurado y los dominios generados por Netlify (URL y PREVIEW)
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.URL,
+  process.env.DEPLOY_PRIME_URL,
+  'http://localhost:3000'
+]
+  .filter(Boolean)
+  .flatMap((origin) => origin.split(','))
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Permitir solicitudes sin encabezado Origin (Postman, servidores internos) y orígenes válidos
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Origen no permitido por CORS'));
+  },
+  credentials: true
+};
+
 // Middlewares
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true
-  })
-);
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Rutas
