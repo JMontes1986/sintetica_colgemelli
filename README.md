@@ -48,9 +48,12 @@ cd backend
 npm install
 ```
 
-Crear archivo `.env`:
+Crear archivo `.env` (usa la clave de servicio para que el backend pueda
+consultar la disponibilidad y las reservas sin restricciones de RLS):
 ```env
-SUPABASE_URL=tu_url_de_supabase
+SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_de_supabase
+# Opcional: clave pública en caso de no contar con la de servicio
+# SUPABASE_ANON_KEY=tu_anon_key_de_supabase
 SUPABASE_ANON_KEY=tu_anon_key_de_supabase
 PORT=5000
 JWT_SECRET=tu_secreto_jwt_seguro_aqui
