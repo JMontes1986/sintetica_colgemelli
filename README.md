@@ -196,7 +196,8 @@ colors: {
 - Verificar URL y Key en `.env`
 - Confirmar que el proyecto Supabase está activo
 - Revisar que se ejecutó el script SQL completo
-Consultar `GET /api/health/supabase` para validar conectividad desde el backend
+- Consultar `GET /api/health/supabase` para validar conectividad desde el backend
+
 
 ### Error CORS
 - Verificar FRONTEND_URL en backend `.env`
