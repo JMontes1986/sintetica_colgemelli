@@ -107,57 +107,6 @@ router.get('/', verificarToken, async (req, res) => {
   }
 });
 
-// Obtener reserva por ID
-router.get('/:id', verificarToken, async (req, res) => {
-  try {
-    const supabase = getSupabase();
-    const { id } = req.params;
-
-    const { data, error } = await supabase
-      .from('reservas')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error || !data) {
-      return res.status(404).json({ error: 'Reserva no encontrada' });
-    }
-
-    res.json({ reserva: data });
-  } catch (error) {
-    return handleSupabaseError(res, error, 'Error al obtener la reserva', 'Error al obtener reserva:');
-  }
-});
-
-// Actualizar estado de reserva (cancha y admin)
-router.patch('/:id/estado', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
-  try {
-    const supabase = getSupabase();
-    const { id } = req.params;
-    const { estado } = req.body;
-
-    if (!estado || !['Pendiente', 'Jugado'].includes(estado)) {
-      return res.status(400).json({ error: 'Estado inválido' });
-    }
-
-    const { data, error } = await supabase
-      .from('reservas')
-      .update({ estado })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    res.json({
-      message: 'Estado actualizado exitosamente',
-      reserva: data
-    });
-  } catch (error) {
-    return handleSupabaseError(res, error, 'Error al actualizar el estado', 'Error al actualizar estado:');
-  }
-});
-
 // Crear reserva manual (cancha y admin)
 router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
   try {
@@ -258,6 +207,57 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
     }
 
     return handleSupabaseError(res, error, 'Error al obtener disponibilidad', 'Error al obtener disponibilidad:');
+  }
+});
+
+// Obtener reserva por ID
+router.get('/:id', verificarToken, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('reservas')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: 'Reserva no encontrada' });
+    }
+
+    res.json({ reserva: data });
+  } catch (error) {
+    return handleSupabaseError(res, error, 'Error al obtener la reserva', 'Error al obtener reserva:');
+  }
+});
+
+// Actualizar estado de reserva (cancha y admin)
+router.patch('/:id/estado', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { id } = req.params;
+    const { estado } = req.body;
+
+    if (!estado || !['Pendiente', 'Jugado'].includes(estado)) {
+      return res.status(400).json({ error: 'Estado inválido' });
+    }
+
+    const { data, error } = await supabase
+      .from('reservas')
+      .update({ estado })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      message: 'Estado actualizado exitosamente',
+      reserva: data
+    });
+  } catch (error) {
+    return handleSupabaseError(res, error, 'Error al actualizar el estado', 'Error al actualizar estado:');
   }
 });
 
