@@ -1,12 +1,25 @@
 const express = require('express');
-const supabase = require('../config/supabase');
+const getSupabase = require('../config/supabase');
 const { verificarToken, verificarRol } = require('../middleware/auth');
 
 const router = express.Router();
 
+const handleSupabaseError = (res, error, defaultMessage, logContext) => {
+  if (logContext) {
+    console.error(logContext, error);
+  }
+
+  if (error.code === 'SUPABASE_CONFIG_MISSING') {
+    return res.status(503).json({ error: error.message });
+  }
+
+  return res.status(500).json({ error: defaultMessage });
+};
+
 // Crear reserva (público - sin autenticación)
 router.post('/crear', async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { nombre_cliente, email_cliente, celular_cliente, fecha, hora } = req.body;
 
     // Validaciones
@@ -47,14 +60,14 @@ router.post('/crear', async (req, res) => {
       reserva: data
     });
   } catch (error) {
-    console.error('Error al crear reserva:', error);
-    res.status(500).json({ error: 'Error al crear la reserva' });
+    return handleSupabaseError(res, error, 'Error al crear la reserva', 'Error al crear reserva:');
   }
 });
 
 // Obtener todas las reservas (requiere autenticación)
 router.get('/', verificarToken, async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { fecha, estado } = req.query;
     
     let query = supabase
@@ -77,14 +90,14 @@ router.get('/', verificarToken, async (req, res) => {
 
     res.json({ reservas: data });
   } catch (error) {
-    console.error('Error al obtener reservas:', error);
-    res.status(500).json({ error: 'Error al obtener reservas' });
+    return handleSupabaseError(res, error, 'Error al obtener reservas', 'Error al obtener reservas:');
   }
 });
 
 // Obtener reserva por ID
 router.get('/:id', verificarToken, async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { id } = req.params;
 
     const { data, error } = await supabase
@@ -99,14 +112,14 @@ router.get('/:id', verificarToken, async (req, res) => {
 
     res.json({ reserva: data });
   } catch (error) {
-    console.error('Error al obtener reserva:', error);
-    res.status(500).json({ error: 'Error al obtener la reserva' });
+    return handleSupabaseError(res, error, 'Error al obtener la reserva', 'Error al obtener reserva:');
   }
 });
 
 // Actualizar estado de reserva (cancha y admin)
 router.patch('/:id/estado', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { id } = req.params;
     const { estado } = req.body;
 
@@ -128,14 +141,14 @@ router.patch('/:id/estado', verificarToken, verificarRol('cancha', 'admin'), asy
       reserva: data
     });
   } catch (error) {
-    console.error('Error al actualizar estado:', error);
-    res.status(500).json({ error: 'Error al actualizar el estado' });
+    return handleSupabaseError(res, error, 'Error al actualizar el estado', 'Error al actualizar estado:');
   }
 });
 
 // Crear reserva manual (cancha y admin)
 router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { nombre_cliente, email_cliente, celular_cliente, fecha, hora } = req.body;
 
     if (!nombre_cliente || !email_cliente || !celular_cliente || !fecha || !hora) {
@@ -175,14 +188,14 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       reserva: data
     });
   } catch (error) {
-    console.error('Error al crear reserva manual:', error);
-    res.status(500).json({ error: 'Error al crear la reserva' });
+    return handleSupabaseError(res, error, 'Error al crear la reserva', 'Error al crear reserva manual:');
   }
 });
 
 // Eliminar reserva (solo admin)
 router.delete('/:id', verificarToken, verificarRol('admin'), async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { id } = req.params;
 
     const { error } = await supabase
@@ -194,14 +207,14 @@ router.delete('/:id', verificarToken, verificarRol('admin'), async (req, res) =>
 
     res.json({ message: 'Reserva eliminada exitosamente' });
   } catch (error) {
-    console.error('Error al eliminar reserva:', error);
-    res.status(500).json({ error: 'Error al eliminar la reserva' });
+    return handleSupabaseError(res, error, 'Error al eliminar la reserva', 'Error al eliminar reserva:');
   }
 });
 
 // Obtener reservas disponibles por fecha
 router.get('/disponibilidad/:fecha', async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { fecha } = req.params;
 
     const HORA_APERTURA = 8;
@@ -230,8 +243,7 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
       horasOcupadas
     });
   } catch (error) {
-    console.error('Error al obtener disponibilidad:', error);
-    res.status(500).json({ error: 'Error al obtener disponibilidad' });
+    return handleSupabaseError(res, error, 'Error al obtener disponibilidad', 'Error al obtener disponibilidad:');
   }
 });
 
