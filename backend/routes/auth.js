@@ -22,7 +22,16 @@ router.post('/login', async (req, res) => {
       .eq('email', email)
       .single();
 
-    if (error || !usuario) {
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(401).json({ error: 'Credenciales inválidas' });
+      }
+
+      console.error('Error de Supabase al buscar usuario:', error);
+      return res.status(503).json({ error: 'Servicio de autenticación no disponible' });
+    }
+
+    if (!usuario) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
