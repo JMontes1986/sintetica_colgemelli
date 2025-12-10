@@ -45,13 +45,8 @@ const Home = () => {
        hora: horas.includes(prev.hora) ? prev.hora : horas[0] || ''
       }));
     } catch (error) {
-      setMensaje({
-        tipo: 'error',
-        texto:
-          error.response?.data?.error ||
-          'No pudimos cargar la disponibilidad, mostramos los horarios predeterminados'
-      });
-      setHorasDisponibles(HORAS_DEL_DIA);
+      setMensaje({ tipo: '', texto: '' });
+      setHorasDisponibles([]);
       setHorasOcupadas([]);
     } finally {
       setConsultando(false);
@@ -296,7 +291,7 @@ const Home = () => {
               </div>
             ) : (
               <div className="p-6 text-center bg-gray-50 rounded-xl text-gray-600">
-                {consultando ? 'Consultando horarios disponibles...' : 'No hay horarios libres para esta fecha.'}
+                {consultando ? 'Consultando horarios disponibles...' : 'Sin reservas para esta fecha.'}
               </div>
             )}
 
@@ -350,15 +345,15 @@ const Home = () => {
                       }`}
                     >
                       {dia.error
-                        ? 'Sin datos'
+                        ? 'Sin reservas'
                         : dia.horasDisponibles.length > 0
                           ? `${dia.horasDisponibles.length} horarios libres`
-                          : 'Sin cupos'}
+                          : 'Sin reservas'}
                     </span>
                   </div>
 
                   {dia.error ? (
-                    <p className="text-sm text-red-700">{dia.error}</p>
+                    <p className="text-sm text-red-700">Sin reservas</p>
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                       {HORAS_DEL_DIA.map((hora) => {
