@@ -1,12 +1,25 @@
 const express = require('express');
-const supabase = require('../config/supabase');
+const getSupabase = require('../config/supabase');
 const { verificarToken, verificarRol } = require('../middleware/auth');
 
 const router = express.Router();
 
+const handleSupabaseError = (res, error, defaultMessage, logContext) => {
+  if (logContext) {
+    console.error(logContext, error);
+  }
+
+  if (error.code === 'SUPABASE_CONFIG_MISSING') {
+    return res.status(503).json({ error: error.message });
+  }
+
+  return res.status(500).json({ error: defaultMessage });
+};
+
 // Obtener estadísticas generales (solo admin)
 router.get('/general', verificarToken, verificarRol('admin'), async (req, res) => {
   try {
+    const supabase = getSupabase();
     // Total de reservas
     const { count: totalReservas, error: errorTotal } = await supabase
       .from('reservas')
@@ -36,14 +49,19 @@ router.get('/general', verificarToken, verificarRol('admin'), async (req, res) =
       reservasPendientes: reservasPendientes || 0
     });
   } catch (error) {
-    console.error('Error al obtener estadísticas generales:', error);
-    res.status(500).json({ error: 'Error al obtener estadísticas' });
+    return handleSupabaseError(
+      res,
+      error,
+      'Error al obtener estadísticas',
+      'Error al obtener estadísticas generales:'
+    );
   }
 });
 
 // Reservas por día (últimos 30 días)
 router.get('/por-dia', verificarToken, verificarRol('admin'), async (req, res) => {
   try {
+    const supabase = getSupabase();
     const { data, error } = await supabase
       .from('reservas')
       .select('fecha, estado')
@@ -74,15 +92,14 @@ router.get('/por-dia', verificarToken, verificarRol('admin'), async (req, res) =
 
     res.json({ reservasPorDia: resultado });
   } catch (error) {
-    console.error('Error al obtener reservas por día:', error);
-    res.status(500).json({ error: 'Error al obtener datos' });
+    return handleSupabaseError(res, error, 'Error al obtener datos', 'Error al obtener reservas por día:');
   }
 });
 
 // Reservas por mes (último año)
 router.get('/por-mes', verificarToken, verificarRol('admin'), async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const supabase = getSupabase();
       .from('reservas')
       .select('fecha, estado')
       .gte('fecha', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
@@ -113,8 +130,7 @@ router.get('/por-mes', verificarToken, verificarRol('admin'), async (req, res) =
 
     res.json({ reservasPorMes: resultado });
   } catch (error) {
-    console.error('Error al obtener reservas por mes:', error);
-    res.status(500).json({ error: 'Error al obtener datos' });
+    return handleSupabaseError(res, error, 'Error al obtener datos', 'Error al obtener reservas por mes:');
   }
 });
 
@@ -122,7 +138,7 @@ router.get('/por-mes', verificarToken, verificarRol('admin'), async (req, res) =
 router.get('/hoy', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
   try {
     const hoy = new Date().toISOString().split('T')[0];
-
+    const supabase = getSupabase();
     const { data, error } = await supabase
       .from('reservas')
       .select('*')
@@ -142,8 +158,7 @@ router.get('/hoy', verificarToken, verificarRol('cancha', 'admin'), async (req, 
       reservas: data
     });
   } catch (error) {
-    console.error('Error al obtener reservas de hoy:', error);
-    res.status(500).json({ error: 'Error al obtener datos' });
+    return handleSupabaseError(res, error, 'Error al obtener datos', 'Error al obtener reservas de hoy:');
   }
 });
 
