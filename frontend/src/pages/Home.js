@@ -33,21 +33,26 @@ const Home = () => {
     try {
       setConsultando(true);
       const response = await reservasAPI.obtenerDisponibilidad(fecha);
-      setHorasDisponibles(response.data.horasDisponibles);
-      setHorasOcupadas(response.data.horasOcupadas);
-
+      const horas = response.data.horasDisponibles?.length
+        ? response.data.horasDisponibles
+        : HORAS_DEL_DIA;
+      setHorasDisponibles(horas);
+      setHorasOcupadas(response.data.horasOcupadas || []);
+      
       // Si la hora seleccionada ya no está disponible, seleccionar la primera disponible
       setFormData((prev) => ({
         ...prev,
-        hora: response.data.horasDisponibles.includes(prev.hora)
-          ? prev.hora
-          : response.data.horasDisponibles[0] || ''
+       hora: horas.includes(prev.hora) ? prev.hora : horas[0] || ''
       }));
     } catch (error) {
       setMensaje({
         tipo: 'error',
-        texto: error.response?.data?.error || 'No pudimos cargar la disponibilidad'
+        texto:
+          error.response?.data?.error ||
+          'No pudimos cargar la disponibilidad, mostramos los horarios predeterminados'
       });
+      setHorasDisponibles(HORAS_DEL_DIA);
+      setHorasOcupadas([]);
     } finally {
       setConsultando(false);
     }
