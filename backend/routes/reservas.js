@@ -198,15 +198,17 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
       horasOcupadas
     });
   } catch (error) {
-    if (error.code === 'SUPABASE_CONFIG_MISSING') {
-      return res.json({
-        fecha: req.params.fecha,
-        horasDisponibles: buildHorariosDisponibles(),
-        horasOcupadas: []
-      });
-    }
+   // En caso de cualquier error (incluida la falta de configuración de Supabase)
+    // devolvemos la lista completa de horarios disponibles para no bloquear
+    // la reserva desde el frontend. Se registra el error para poder depurarlo.
+    console.error('Error al obtener disponibilidad:', error);
 
-    return handleSupabaseError(res, error, 'Error al obtener disponibilidad', 'Error al obtener disponibilidad:');
+    return res.json({
+      fecha: req.params.fecha,
+      horasDisponibles: buildHorariosDisponibles(),
+      horasOcupadas: [],
+      error: 'Se usó disponibilidad por defecto debido a un problema al consultar Supabase'
+    });
   }
 });
 
