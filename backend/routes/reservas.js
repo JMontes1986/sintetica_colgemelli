@@ -4,6 +4,19 @@ const { verificarToken, verificarRol } = require('../middleware/auth');
 
 const router = express.Router();
 
+const HORA_APERTURA = 8;
+const HORA_CIERRE = 20;
+
+const buildHorariosDisponibles = () => {
+  const horarios = [];
+
+  for (let i = HORA_APERTURA; i <= HORA_CIERRE; i++) {
+    horarios.push(`${i.toString().padStart(2, '0')}:00`);
+  }
+
+  return horarios;
+};
+
 const handleSupabaseError = (res, error, defaultMessage, logContext) => {
   if (logContext) {
     console.error(logContext, error);
@@ -217,15 +230,8 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
     const supabase = getSupabase();
     const { fecha } = req.params;
 
-    const HORA_APERTURA = 8;
-    const HORA_CIERRE = 20;
-
-    // Horarios disponibles (de 8:00 a 20:00)
-    const horariosDisponibles = [];
-    for (let i = HORA_APERTURA; i <= HORA_CIERRE; i++) {
-      horariosDisponibles.push(`${i.toString().padStart(2, '0')}:00`);
-    }
-
+    const horariosDisponibles = buildHorariosDisponibles();
+    
     // Obtener reservas existentes para esa fecha
     const { data: reservasExistentes, error } = await supabase
       .from('reservas')
@@ -243,6 +249,14 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
       horasOcupadas
     });
   } catch (error) {
+    if (error.code === 'SUPABASE_CONFIG_MISSING') {
+      return res.json({
+        fecha: req.params.fecha,
+        horasDisponibles: buildHorariosDisponibles(),
+        horasOcupadas: []
+      });
+    }
+
     return handleSupabaseError(res, error, 'Error al obtener disponibilidad', 'Error al obtener disponibilidad:');
   }
 });
