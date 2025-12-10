@@ -41,12 +41,14 @@ router.post('/crear', async (req, res) => {
     }
 
     // Verificar si ya existe reserva en esa fecha y hora
-    const { data: existente } = await supabase
+    const { data: existente, error: errorReservaExistente } = await supabase
       .from('reservas')
       .select('*')
       .eq('fecha', fecha)
       .eq('hora', hora)
-      .single();
+      .maybeSingle();
+
+    if (errorReservaExistente) throw errorReservaExistente;
 
     if (existente) {
       return res.status(400).json({ error: 'Ya existe una reserva para esa fecha y hora' });
@@ -118,12 +120,14 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
     }
 
     // Verificar disponibilidad
-    const { data: existente } = await supabase
+    const { data: existente, error: errorReservaExistente } = await supabase
       .from('reservas')
       .select('*')
       .eq('fecha', fecha)
       .eq('hora', hora)
-      .single();
+      .maybeSingle();
+
+    if (errorReservaExistente) throw errorReservaExistente;
 
     if (existente) {
       return res.status(400).json({ error: 'Ya existe una reserva para esa fecha y hora' });
