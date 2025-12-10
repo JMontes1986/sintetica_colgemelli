@@ -204,9 +204,12 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
   try {
     const { fecha } = req.params;
 
-    // Horarios disponibles (de 8:00 a 22:00)
+    const HORA_APERTURA = 8;
+    const HORA_CIERRE = 20;
+
+    // Horarios disponibles (de 8:00 a 20:00)
     const horariosDisponibles = [];
-    for (let i = 8; i <= 21; i++) {
+    for (let i = HORA_APERTURA; i <= HORA_CIERRE; i++) {
       horariosDisponibles.push(`${i.toString().padStart(2, '0')}:00`);
     }
 
