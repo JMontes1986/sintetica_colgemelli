@@ -44,6 +44,8 @@ Crea este archivo en la raíz del proyecto:
   status = 200
 ```
 
+Nota: se fuerza `--include=dev` en las instalaciones para que Netlify descargue dependencias de desarrollo como `react-scripts`; sin ellas el comando de build falla antes de publicar el frontend.
+
 ### Paso 2: Convertir Backend a Netlify Function
 
 **netlify/functions/api.js**
