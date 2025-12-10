@@ -1,18 +1,15 @@
 const { createClient } = require('@supabase/supabase-js');
 
 let supabaseInstance = null;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const buildMissingVarsMessage = (missingVars) =>
-  `Configuración de Supabase incompleta: faltan ${missingVars.join(
-    ', '
-  )}. Define estas variables en Netlify (Site settings → Environment variables) o en tu .env local.`;
+ `Configuración de Supabase incompleta: faltan ${missingVars.join(', ')}. Define estas variables en Netlify (Site settings → Environment variables) o en tu .env local.`;
 
 const createSupabaseClient = () => {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-const missingVars = [];
+  const missingVars = [];
   if (!supabaseUrl) missingVars.push('SUPABASE_URL');
   if (!supabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY o SUPABASE_ANON_KEY');
 
