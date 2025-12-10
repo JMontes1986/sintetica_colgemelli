@@ -5,9 +5,7 @@ import axios from 'axios';
 // - Desarrollo: usa el backend local
 export const API_URL =
   process.env.REACT_APP_API_URL ||
-  (process.env.NODE_ENV === 'production'
-    ? '/.netlify/functions/api'
-    : 'http://localhost:5000/api');
+  (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
 
 // Configuración de axios
 const api = axios.create({
