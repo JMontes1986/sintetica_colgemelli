@@ -1,14 +1,39 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-// Preferimos la clave de servicio para que el backend pueda operar sin
-// las restricciones de RLS usadas por el cliente público.
+let supabaseInstance = null;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const buildMissingVarsMessage = (missingVars) =>
+  `Configuración de Supabase incompleta: faltan ${missingVars.join(
+    ', '
+  )}. Define estas variables en Netlify (Site settings → Environment variables) o en tu .env local.`;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Faltan variables de entorno de Supabase');
-}
+const createSupabaseClient = () => {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const missingVars = [];
+  if (!supabaseUrl) missingVars.push('SUPABASE_URL');
+  if (!supabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY o SUPABASE_ANON_KEY');
 
-module.exports = supabase;
+  if (missingVars.length) {
+    const error = new Error(buildMissingVarsMessage(missingVars));
+    error.code = 'SUPABASE_CONFIG_MISSING';
+    throw error;
+  }
+
+  supabaseInstance = createClient(supabaseUrl, supabaseKey);
+  return supabaseInstance;
+};
+
+/**
+ * Obtiene el cliente de Supabase reutilizando la instancia para evitar
+ * recrearla en cada petición. Si faltan variables de entorno se lanza un
+ * error con un mensaje orientado al despliegue en Netlify.
+ */
+const getSupabase = () => {
+  if (supabaseInstance) return supabaseInstance;
+  return createSupabaseClient();
+};
+
+module.exports = getSupabase;
