@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { reservasAPI, estadisticasAPI } from '../services/api';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const DashboardAdmin = () => {
@@ -31,26 +30,7 @@ const DashboardAdmin = () => {
     hora: '10:00'
   });
 
-  useEffect(() => {
-    cargarDatos();
-  }, [vistaActual]);
-
-  const cargarDatos = async () => {
-    setLoading(true);
-    try {
-      if (vistaActual === 'estadisticas') {
-        await cargarEstadisticas();
-      } else {
-        await cargarReservas();
-      }
-    } catch (error) {
-      console.error('Error al cargar datos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cargarEstadisticas = async () => {
+  const cargarEstadisticas = useCallback(async () => {
     try {
       const [general, porDia, porMes] = await Promise.all([
         estadisticasAPI.obtenerGeneral(),
@@ -65,9 +45,9 @@ const DashboardAdmin = () => {
       console.error('Error al cargar estadísticas:', error);
       setMensaje({ tipo: 'error', texto: 'Error al cargar estadísticas' });
     }
-  };
+  }, []);
 
-  const cargarReservas = async () => {
+  const cargarReservas = useCallback(async () => {
     try {
       const params = filtro !== 'todas' ? { estado: filtro === 'pendientes' ? 'Pendiente' : 'Jugado' } : {};
       const response = await reservasAPI.obtenerTodas(params);
@@ -76,7 +56,26 @@ const DashboardAdmin = () => {
       console.error('Error al cargar reservas:', error);
       setMensaje({ tipo: 'error', texto: 'Error al cargar las reservas' });
     }
-  };
+  }, [filtro]);
+
+  const cargarDatos = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (vistaActual === 'estadisticas') {
+        await cargarEstadisticas();
+      } else {
+        await cargarReservas();
+      }
+    } catch (error) {
+      console.error('Error al cargar datos:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [vistaActual, cargarEstadisticas, cargarReservas]);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   const cambiarEstado = async (id, nuevoEstado) => {
     try {
