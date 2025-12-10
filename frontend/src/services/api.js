@@ -1,6 +1,13 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL;
+// Fallback para despliegues sin REACT_APP_API_URL configurada
+// - Producción: intenta usar funciones de Netlify
+// - Desarrollo: usa el backend local
+export const API_URL =
+  process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? '/.netlify/functions/api'
+    : 'http://localhost:5000/api');
 
 // Configuración de axios
 const api = axios.create({
