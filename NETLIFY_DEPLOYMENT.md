@@ -29,7 +29,7 @@ Crea este archivo en la raíz del proyecto:
   base = "frontend"
   command = "npm run build"
   publish = "build"
-  functions = "../netlify/functions"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
