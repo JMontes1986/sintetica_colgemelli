@@ -1,10 +1,11 @@
 const express = require('express');
-const supabase = require('../config/supabase');
+const getSupabase = require('../config/supabase');
 
 const router = express.Router();
 
 router.get('/supabase', async (_req, res) => {
   try {
+    const supabase = getSupabase();
     const { error } = await supabase.from('usuarios').select('id').limit(1);
 
     if (error) {
@@ -17,6 +18,11 @@ router.get('/supabase', async (_req, res) => {
     res.json({ estado: 'ok', mensaje: 'Supabase operativo' });
   } catch (error) {
     console.error('Error inesperado al comprobar Supabase:', error);
+    if (error.code === 'SUPABASE_CONFIG_MISSING') {
+      return res
+        .status(503)
+        .json({ estado: 'error', mensaje: error.message });
+    }
     res
       .status(503)
       .json({ estado: 'error', mensaje: 'Error al comprobar Supabase' });
