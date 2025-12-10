@@ -4,6 +4,13 @@ import { reservasAPI } from '../services/api';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+const HORARIO_APERTURA = 8;
+const HORARIO_CIERRE = 20;
+const HORAS_DEL_DIA = Array.from({ length: HORARIO_CIERRE - HORARIO_APERTURA + 1 }, (_, idx) => {
+  const hora = HORARIO_APERTURA + idx;
+  return `${hora.toString().padStart(2, '0')}:00`;
+});
+
 const Home = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [formData, setFormData] = useState({
@@ -18,6 +25,9 @@ const Home = () => {
   const [horasOcupadas, setHorasOcupadas] = useState([]);
   const [consultando, setConsultando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [disponibilidadDias, setDisponibilidadDias] = useState([]);
+  const [cargandoDias, setCargandoDias] = useState(true);
+  const [errorDias, setErrorDias] = useState('');
 
   const cargarDisponibilidad = async (fecha) => {
     try {
@@ -48,6 +58,53 @@ const Home = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.fecha]);
 
+  useEffect(() => {
+    const cargarDisponibilidadSemanal = async () => {
+      setCargandoDias(true);
+      setErrorDias('');
+
+      const dias = Array.from({ length: 7 }, (_, idx) => {
+        const fecha = new Date();
+        fecha.setDate(fecha.getDate() + idx);
+        return {
+          fechaValor: format(fecha, 'yyyy-MM-dd'),
+          etiqueta: format(fecha, "EEEE d 'de' MMMM", { locale: es })
+        };
+      });
+
+      try {
+        const resultados = await Promise.all(
+          dias.map(async (dia) => {
+            try {
+              const response = await reservasAPI.obtenerDisponibilidad(dia.fechaValor);
+              return {
+                ...dia,
+                horasDisponibles: response.data.horasDisponibles,
+                horasOcupadas: response.data.horasOcupadas,
+                error: ''
+              };
+            } catch (error) {
+              return {
+                ...dia,
+                horasDisponibles: [],
+                horasOcupadas: [],
+                error: error.response?.data?.error || 'Sin datos de disponibilidad'
+              };
+            }
+          })
+        );
+
+        setDisponibilidadDias(resultados);
+      } catch (error) {
+        setErrorDias('No pudimos cargar la disponibilidad por día.');
+      } finally {
+        setCargandoDias(false);
+      }
+    };
+
+    cargarDisponibilidadSemanal();
+  }, []);
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje({ tipo: '', texto: '' });
@@ -212,7 +269,7 @@ const Home = () => {
                 </h3>
               </div>
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
-                Abierto 8:00 - 22:00
+                Abierto 8:00 - 20:00
               </span>
             </div>
 
@@ -256,6 +313,73 @@ const Home = () => {
               <p className="mt-1">El panel de administración y cancha está disponible desde el botón de acceso.</p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-12">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-sm text-gray-500">Disponibilidad por día</p>
+              <h3 className="text-2xl font-semibold text-gray-800">Próximos 7 días</h3>
+            </div>
+            {cargandoDias && <span className="text-sm text-gray-500">Actualizando calendario...</span>}
+          </div>
+
+          {errorDias ? (
+            <div className="p-4 rounded-lg bg-red-50 text-red-700 border border-red-200">{errorDias}</div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {disponibilidadDias.map((dia) => (
+                <div key={dia.fechaValor} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-xs uppercase text-gray-500">{dia.fechaValor}</p>
+                      <p className="text-lg font-semibold text-gray-800">{dia.etiqueta}</p>
+                    </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        dia.error
+                          ? 'bg-red-100 text-red-700'
+                          : dia.horasDisponibles.length > 0
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {dia.error
+                        ? 'Sin datos'
+                        : dia.horasDisponibles.length > 0
+                          ? `${dia.horasDisponibles.length} horarios libres`
+                          : 'Sin cupos'}
+                    </span>
+                  </div>
+
+                  {dia.error ? (
+                    <p className="text-sm text-red-700">{dia.error}</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      {HORAS_DEL_DIA.map((hora) => {
+                        const disponible = dia.horasDisponibles.includes(hora);
+                        return (
+                          <div
+                            key={`${dia.fechaValor}-${hora}`}
+                            className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
+                              disponible
+                                ? 'border-green-200 bg-green-50 text-green-800'
+                                : 'border-gray-200 bg-gray-50 text-gray-600'
+                            }`}
+                          >
+                            <span className="font-semibold">{hora}</span>
+                            <span className="text-xs uppercase tracking-wide">
+                              {disponible ? 'Disponible' : 'Ocupado'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
