@@ -11,6 +11,7 @@
    - **Start Command:** `node server.js`
    - Variables de entorno (puedes basarte en `backend/.env.example`).
 2. En Netlify, define `REACT_APP_API_URL` apuntando al dominio del backend (ej.: `https://tu-backend.onrender.com/api`).
+- ⚠️ Debe terminar exactamente en `/api` (sin una barra adicional). Ejemplo incorrecto: `https://tu-backend.onrender.com`. Ejemplo correcto: `https://tu-backend.onrender.com/api`.
 3. (Opcional) Elimina el redirect de API si no usarás funciones: ajusta `netlify.toml` o quita la carpeta `netlify/functions` para evitar confusión.
 
 ---
