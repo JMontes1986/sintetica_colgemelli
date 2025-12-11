@@ -31,17 +31,8 @@ CREATE INDEX idx_reservas_fecha ON reservas(fecha);
 CREATE INDEX idx_reservas_estado ON reservas(estado);
 CREATE INDEX idx_reservas_fecha_hora ON reservas(fecha, hora);
 
--- 4. Insertar usuario administrador por defecto
-INSERT INTO usuarios (email, nombre, rol, password_hash)
-VALUES
-  -- Hash generado con bcrypt.hash('admin123', 10)
-  ('admin@cancha.com', 'Administrador', 'admin', '$2a$10$Q7GAfi7rcmrYgcFPEjtVsehq.fdZTmMUff.TKMETc4eYibyJicKjy'),
-  ('cancha@cancha.com', 'Operador Cancha', 'cancha', '$2a$10$Q7GAfi7rcmrYgcFPEjtVsehq.fdZTmMUff.TKMETc4eYibyJicKjy')
-ON CONFLICT (email) DO UPDATE SET
-  nombre = EXCLUDED.nombre,
-  rol = EXCLUDED.rol,
-  password_hash = EXCLUDED.password_hash;
-
+- 4. Crear cuentas manualmente (no se incluyen usuarios por defecto)
+  
 -- 5. Habilitar Row Level Security (RLS)
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reservas ENABLE ROW LEVEL SECURITY;
@@ -107,10 +98,4 @@ CREATE TRIGGER update_reservas_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- 10. Datos de ejemplo (opcional para testing)
-INSERT INTO reservas (nombre_cliente, email_cliente, celular_cliente, fecha, hora, estado)
-VALUES 
-  ('Juan Pérez', 'juan@email.com', '3001234567', CURRENT_DATE, '10:00', 'Pendiente'),
-  ('María López', 'maria@email.com', '3009876543', CURRENT_DATE, '14:00', 'Jugado'),
-  ('Carlos Ruiz', 'carlos@email.com', '3005551234', CURRENT_DATE + 1, '16:00', 'Pendiente')
-ON CONFLICT DO NOTHING;
+-- 10. Datos de ejemplo (se omiten para evitar usuarios o reservas predefinidos)
