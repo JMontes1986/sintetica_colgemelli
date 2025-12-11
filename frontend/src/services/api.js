@@ -60,4 +60,9 @@ export const authAPI = {
   registro: (datos) => api.post('/auth/registro', datos)
 };
 
+// API de salud
+export const healthAPI = {
+  supabase: () => api.get('/health/supabase')
+};
+
 export default api;
