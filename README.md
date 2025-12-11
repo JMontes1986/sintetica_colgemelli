@@ -53,6 +53,7 @@ Crear archivo `.env`:
 SUPABASE_URL=tu_url_de_supabase
 SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_de_supabase # recomendado para backend
 SUPABASE_ANON_KEY=tu_anon_key_de_supabase # opcional si usas la service role
+# También puedes usar SUPABASE_KEY si ya lo tienes configurado en tu proyecto
 PORT=5000
 JWT_SECRET=tu_secreto_jwt_seguro_aqui
 FRONTEND_URL=http://localhost:3000
