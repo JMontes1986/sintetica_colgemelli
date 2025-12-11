@@ -79,17 +79,6 @@ Iniciar aplicación:
 npm start
 ```
 
-## 👥 Usuarios de Prueba
-
-Por defecto, el sistema incluye estos usuarios:
-
-| Email | Contraseña | Rol |
-|-------|------------|-----|
-| admin@cancha.com | admin123 | Administrador |
-| cancha@cancha.com | admin123 | Operador Cancha |
-
-Si creaste la base de datos antes de esta actualización, vuelve a ejecutar el script `supabase_schema.sql` para que se actualice el hash de contraseña de estas cuentas y puedas iniciar sesión con `admin123`
-
 ## 📁 Estructura del Proyecto
 
 ```
