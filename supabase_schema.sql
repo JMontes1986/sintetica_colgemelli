@@ -32,12 +32,15 @@ CREATE INDEX idx_reservas_estado ON reservas(estado);
 CREATE INDEX idx_reservas_fecha_hora ON reservas(fecha, hora);
 
 -- 4. Insertar usuario administrador por defecto
--- Password: admin123 (en producción usar hash real)
 INSERT INTO usuarios (email, nombre, rol, password_hash)
-VALUES 
-  ('admin@cancha.com', 'Administrador', 'admin', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW'),
-  ('cancha@cancha.com', 'Operador Cancha', 'cancha', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW')
-ON CONFLICT (email) DO NOTHING;
+VALUES
+  -- Hash generado con bcrypt.hash('admin123', 10)
+  ('admin@cancha.com', 'Administrador', 'admin', '$2a$10$Q7GAfi7rcmrYgcFPEjtVsehq.fdZTmMUff.TKMETc4eYibyJicKjy'),
+  ('cancha@cancha.com', 'Operador Cancha', 'cancha', '$2a$10$Q7GAfi7rcmrYgcFPEjtVsehq.fdZTmMUff.TKMETc4eYibyJicKjy')
+ON CONFLICT (email) DO UPDATE SET
+  nombre = EXCLUDED.nombre,
+  rol = EXCLUDED.rol,
+  password_hash = EXCLUDED.password_hash;
 
 -- 5. Habilitar Row Level Security (RLS)
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
