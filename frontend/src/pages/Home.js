@@ -33,16 +33,20 @@ const Home = () => {
     try {
       setConsultando(true);
       const response = await reservasAPI.obtenerDisponibilidad(fecha);
+      const horasOcupadasAPI = response.data.horasOcupadas || [];
       const horas = response.data.horasDisponibles?.length
         ? response.data.horasDisponibles
         : HORAS_DEL_DIA;
-      setHorasDisponibles(horas);
-      setHorasOcupadas(response.data.horasOcupadas || []);
+      const horasLibres = horas.filter((hora) => !horasOcupadasAPI.includes(hora));
+      const horasSeleccionables = horasLibres.length ? horasLibres : horas;
+
+      setHorasDisponibles(horasSeleccionables);
+      setHorasOcupadas(horasOcupadasAPI);
       
       // Si la hora seleccionada ya no está disponible, seleccionar la primera disponible
       setFormData((prev) => ({
         ...prev,
-       hora: horas.includes(prev.hora) ? prev.hora : horas[0] || ''
+        hora: horasSeleccionables.includes(prev.hora) ? prev.hora : horasSeleccionables[0] || ''
       }));
     } catch (error) {
       // Si no se puede consultar la API, mostramos todos los horarios para evitar dejar la UI vacía
@@ -283,27 +287,32 @@ const Home = () => {
               </span>
             </div>
 
-            {horasDisponibles.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {horasDisponibles.map((hora) => (
+             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {HORAS_DEL_DIA.map((hora) => {
+                const disponible = horasDisponibles.includes(hora) && !horasOcupadas.includes(hora);
+                return (
                   <button
                     key={hora}
-                    onClick={() => setFormData({ ...formData, hora })}
+                    type="button"
+                    onClick={() => disponible && setFormData({ ...formData, hora })}
+                    disabled={!disponible}
                     className={`p-3 rounded-lg border text-center font-semibold transition ${
-                      formData.hora === hora
-                        ? 'border-primary bg-green-50 text-primary'
-                        : 'border-gray-200 hover:border-primary hover:bg-green-50'
+                      disponible
+                        ? formData.hora === hora
+                          ? 'border-primary bg-green-50 text-primary'
+                          : 'border-gray-200 hover:border-primary hover:bg-green-50'
+                        : 'border-red-200 bg-red-50 text-red-700 cursor-not-allowed'
                     }`}
                   >
                     {hora}
                   </button>
-                ))}
-              </div>
-            ) : (
-              <div className="p-6 text-center bg-gray-50 rounded-xl text-gray-600">
-                {consultando ? 'Consultando horarios disponibles...' : 'Sin reservas para esta fecha.'}
-              </div>
-            )}
+                );
+              })}
+            </div>
+            {HORAS_DEL_DIA.filter((hora) => horasDisponibles.includes(hora) && !horasOcupadas.includes(hora)).length === 0 &&
+              !consultando && (
+                <p className="text-sm text-red-600 mt-2">No hay horarios disponibles para esta fecha.</p>
+              )}
 
             {horasOcupadas.length > 0 && (
               <div className="mt-6">
