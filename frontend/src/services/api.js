@@ -1,13 +1,16 @@
 import axios from 'axios';
 
 // Fallback para despliegues sin REACT_APP_API_URL configurada
-// - Producción: intenta usar funciones de Netlify
-// - Desarrollo: usa el backend local
+// - Producción y entornos con proxy (Netlify): usa /api para aprovechar los redirects
+// - Desarrollo local clásico: usa el backend en localhost:5000
+const isNetlifyDev =
+  typeof window !== 'undefined' && (window.location.port === '8888' || window.location.hostname.includes('netlify'));
+
 export const API_URL =
   process.env.REACT_APP_API_URL ||
-  (process.env.NODE_ENV === 'production'
-    ? '/.netlify/functions/api'
-    : 'http://localhost:5000/api');
+  (process.env.NODE_ENV === 'development' && !isNetlifyDev
+    ? 'http://localhost:5000/api'
+    : '/api');
 
 // Configuración de axios
 const api = axios.create({
