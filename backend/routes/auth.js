@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const getSupabase = require('../config/supabase');
 const { verificarToken } = require('../middleware/auth');
+const { getJwtSecret } = require('../utils/env');
 
 const router = express.Router();
 
@@ -46,7 +47,7 @@ router.post('/login', async (req, res) => {
     // Generar token
     const token = jwt.sign(
       { userId: usuario.id, email: usuario.email, rol: usuario.rol },
-      process.env.JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '24h' }
     );
 
@@ -61,7 +62,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Error en login:', error);
-    if (error.code === 'SUPABASE_CONFIG_MISSING') {
+    if (error.code === 'SUPABASE_CONFIG_MISSING' || error.code === 'JWT_SECRET_MISSING') {
       return res.status(503).json({ error: error.message });
     }
     res.status(500).json({ error: 'Error al iniciar sesión' });
