@@ -136,7 +136,7 @@ const Home = () => {
       const mensajeError =
         error.response?.data?.error ||
         (error.code === 'ERR_NETWORK'
-          ? 'No pudimos conectar con el servidor. Verifica tu conexión y que la API esté disponible.'
+          ? 'No pudimos conectar con el servidor en este momento. Intenta nuevamente en unos minutos o contáctanos si el problema continúa.'
           : error.message);
       
       setMensaje({
