@@ -1,5 +1,20 @@
 # 🚀 Despliegue Completo en Netlify
 
+💡 **Recomendado:** Mantén el backend como servicio separado (Render, Railway, etc.) y usa Netlify solo para el frontend.
+> Esta ruta evita los problemas actuales con `/.netlify/functions/api` y respeta la arquitectura Express existente.
+
+## Opción A: Backend externo + Frontend en Netlify (recomendado)
+
+1. Despliega la carpeta `backend/` en un servicio de Node.js (Render/Railway/Heroku). Configuración típica en Render:
+   - **Root Directory:** `backend`
+   - **Build Command:** `npm install`
+   - **Start Command:** `node server.js`
+   - Variables de entorno (puedes basarte en `backend/.env.example`).
+2. En Netlify, define `REACT_APP_API_URL` apuntando al dominio del backend (ej.: `https://tu-backend.onrender.com/api`).
+3. (Opcional) Elimina el redirect de API si no usarás funciones: ajusta `netlify.toml` o quita la carpeta `netlify/functions` para evitar confusión.
+
+---
+
 ## Opción 1: Backend en Netlify Functions (Recomendado)
 
 Netlify permite ejecutar backend con **Netlify Functions** (serverless).
