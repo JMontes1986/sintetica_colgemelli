@@ -100,16 +100,6 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Credenciales de prueba */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 font-semibold mb-2">
-              Credenciales de prueba:
-            </p>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p><strong>Admin:</strong> admin@cancha.com / admin123</p>
-              <p><strong>Cancha:</strong> cancha@cancha.com / admin123</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
