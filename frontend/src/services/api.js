@@ -6,11 +6,29 @@ import axios from 'axios';
 const isNetlifyDev =
   typeof window !== 'undefined' && (window.location.port === '8888' || window.location.hostname.includes('netlify'));
 
+// Nos aseguramos de que la URL base siempre incluya el prefijo /api (o el path completo de Netlify)
+const normalizeApiUrl = (url) => {
+  if (!url) return '';
+
+  const trimmed = url.replace(/\/$/, '');
+  const includesNetlifyFunctions = trimmed.includes('/.netlify/functions');
+
+  if (trimmed.endsWith('/api') || includesNetlifyFunctions) {
+    return trimmed;
+  }
+
+  return `${trimmed}/api`;
+};
+
+const envApiUrl = normalizeApiUrl(process.env.REACT_APP_API_URL);
+
 export const API_URL =
-  process.env.REACT_APP_API_URL ||
-  (process.env.NODE_ENV === 'development' && !isNetlifyDev
-    ? 'http://localhost:5000/api'
-    : '/api');
+  envApiUrl ||
+  normalizeApiUrl(
+    process.env.NODE_ENV === 'development' && !isNetlifyDev
+      ? 'http://localhost:5000/api'
+      : '/api'
+  );
 
 // Configuración de axios
 const api = axios.create({
