@@ -23,10 +23,33 @@ const allowedOrigins = [
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // Peticiones sin encabezado Origin (Postman, servidores internos)
+
+  // Normalizar para evitar fallos por barras finales
+  const normalizedOrigin = origin.replace(/\/$/, '');
+
+  let hostname = '';
+  try {
+    hostname = new URL(normalizedOrigin).hostname;
+  } catch (error) {
+    // Si no se puede parsear, se sigue usando la cadena original para validar en la lista blanca
+  }
+
+  const isNetlifyPreview = hostname.endsWith('.netlify.app');
+  const isLocalhost = hostname === 'localhost';
+
+  return (
+    allowedOrigins.includes(normalizedOrigin) ||
+    allowedOrigins.includes(origin) ||
+    isNetlifyPreview ||
+    isLocalhost
+  );
+};
+
 const corsOptions = {
   origin: (origin, callback) => {
-    // Permitir solicitudes sin encabezado Origin (Postman, servidores internos) y orígenes válidos
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
 
