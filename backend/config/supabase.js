@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 let supabaseInstance = null;
 const buildMissingVarsMessage = (missingVars) =>
- `Configuración de Supabase incompleta: faltan ${missingVars.join(', ')}. Define estas variables en Netlify (Site settings → Environment variables) o en tu .env local.`;
+  `Configuración de Supabase incompleta: faltan ${missingVars.join(', ')}. Define estas variables en Netlify (Site settings → Environment variables) o en tu .env local.`;
 
 const createSupabaseClient = () => {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -14,9 +14,9 @@ const createSupabaseClient = () => {
 
   const missingVars = [];
   if (!supabaseUrl) missingVars.push('SUPABASE_URL');
-  if (!supabaseKey)
+  if (!supabaseKey) {
     missingVars.push('SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SUPABASE_PUBLISHABLE_KEY o SUPABASE_KEY');
-
+  }
   if (missingVars.length) {
     const error = new Error(buildMissingVarsMessage(missingVars));
     error.code = 'SUPABASE_CONFIG_MISSING';
@@ -48,7 +48,15 @@ const getSupabaseStatus = () => {
     supabaseUrl,
     supabaseUrlPresent: Boolean(supabaseUrl),
     supabaseKeyPresent: Boolean(serviceKey || anonKey || publishableKey || legacyKey),
-    keyType: serviceKey ? 'service_role' : anonKey ? 'anon' : publishableKey ? 'publishable' : 'legacy
+    keyType: serviceKey
+      ? 'service_role'
+      : anonKey
+        ? 'anon'
+        : publishableKey
+          ? 'publishable'
+          : legacyKey
+            ? 'legacy'
+            : 'missing'
   };
 };
 
