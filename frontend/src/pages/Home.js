@@ -133,9 +133,15 @@ const Home = () => {
       cargarDisponibilidad(formData.fecha);
       return response;
     } catch (error) {
+      const mensajeError =
+        error.response?.data?.error ||
+        (error.code === 'ERR_NETWORK'
+          ? 'No pudimos conectar con el servidor. Verifica tu conexión y que la API esté disponible.'
+          : error.message);
+      
       setMensaje({
         tipo: 'error',
-        texto: error.response?.data?.error || 'No pudimos crear la reserva'
+        texto: mensajeError || 'No pudimos crear la reserva'
       });
     } finally {
       setEnviando(false);
