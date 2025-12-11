@@ -15,7 +15,8 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.URL,
   process.env.DEPLOY_PRIME_URL,
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'http://localhost:8888' // netlify dev
 ]
   .filter(Boolean)
   .flatMap((origin) => origin.split(','))
