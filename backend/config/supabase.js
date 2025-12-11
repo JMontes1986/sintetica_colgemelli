@@ -33,4 +33,18 @@ const getSupabase = () => {
   return createSupabaseClient();
 };
 
+const getSupabaseStatus = () => {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  return {
+    supabaseUrl,
+    supabaseUrlPresent: Boolean(supabaseUrl),
+    supabaseKeyPresent: Boolean(serviceKey || anonKey),
+    keyType: serviceKey ? 'service_role' : anonKey ? 'anon' : 'missing'
+  };
+};
+
 module.exports = getSupabase;
+module.exports.getStatus = getSupabaseStatus;
