@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const getSupabase = require('../config/supabase');
+const { getJwtSecret } = require('../utils/env');
 
 // Middleware para verificar token JWT
 const verificarToken = async (req, res, next) => {
@@ -11,7 +12,7 @@ const verificarToken = async (req, res, next) => {
       return res.status(401).json({ error: 'Token no proporcionado' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     
     // Verificar que el usuario existe
     const { data: usuario, error } = await supabase
@@ -27,7 +28,7 @@ const verificarToken = async (req, res, next) => {
     req.usuario = usuario;
     next();
   } catch (error) {
-    if (error.code === 'SUPABASE_CONFIG_MISSING') {
+    if (error.code === 'SUPABASE_CONFIG_MISSING' || error.code === 'JWT_SECRET_MISSING') {
       return res.status(503).json({ error: error.message });
     }
     return res.status(401).json({ error: 'Token inválido' });
