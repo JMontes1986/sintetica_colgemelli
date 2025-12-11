@@ -100,6 +100,7 @@ router.get('/por-dia', verificarToken, verificarRol('admin'), async (req, res) =
 router.get('/por-mes', verificarToken, verificarRol('admin'), async (req, res) => {
   try {
     const supabase = getSupabase();
+    const { data, error } = await supabase
       .from('reservas')
       .select('fecha, estado')
       .gte('fecha', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
