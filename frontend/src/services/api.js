@@ -45,6 +45,21 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Asegurar que las rutas siempre incluyan el prefijo /api cuando no exista baseURL
+    const isAbsoluteUrl = /^https?:\/\//i.test(config.url || '');
+    const hasApiBase = (config.baseURL || '').includes('/api');
+    const needsApiPrefix =
+      !isAbsoluteUrl &&
+      !hasApiBase &&
+      config.url &&
+      !config.url.startsWith('/api');
+
+    if (needsApiPrefix) {
+      const normalizedPath = config.url.startsWith('/') ? config.url : `/${config.url}`;
+      config.url = `/api${normalizedPath}`;
+    }
+    
     return config;
   },
   (error) => {
