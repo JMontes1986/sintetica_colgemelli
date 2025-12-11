@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import DashboardCancha from './pages/DashboardCancha';
 import DashboardAdmin from './pages/DashboardAdmin';
+import Diagnostico from './pages/Diagnostico';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -38,7 +39,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          
+          <Route path="/diagnostico" element={<Diagnostico />} />
+  
           <Route
             path="/cancha"
             element={
