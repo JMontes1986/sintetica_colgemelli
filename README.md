@@ -48,15 +48,9 @@ cd backend
 npm install
 ```
 
-Crear archivo `.env`:
-```env
-SUPABASE_URL=tu_url_de_supabase
-SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_de_supabase # recomendado para backend
-SUPABASE_ANON_KEY=tu_anon_key_de_supabase # opcional si usas la service role
-# También puedes usar SUPABASE_KEY si ya lo tienes configurado en tu proyecto
-PORT=5000
-JWT_SECRET=tu_secreto_jwt_seguro_aqui
-FRONTEND_URL=http://localhost:3000
+Copia `.env.example` y completa tus credenciales:
+```bash
+cp .env.example .env
 ```
 
 > **Importante:** En Netlify debes definir estas mismas variables de entorno en la configuración del sitio (Site settings → Environment variables) para que la función `/.netlify/functions/api` pueda conectarse a Supabase.
@@ -75,9 +69,9 @@ cd frontend
 npm install
 ```
 
-Crear archivo `.env`:
-```env
-REACT_APP_API_URL=http://localhost:5000/api
+Configura la URL del backend (ej. Render/Railway) copiando la plantilla:
+```bash
+cp .env.example .env
 ```
 
 Iniciar aplicación:
