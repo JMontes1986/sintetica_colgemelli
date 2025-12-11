@@ -47,7 +47,6 @@ const Home = () => {
     } catch (error) {
       // Si no se puede consultar la API, mostramos todos los horarios para evitar dejar la UI vacía
       setHorasDisponibles(HORAS_DEL_DIA);
-      setHorasDisponibles([]);
       setHorasOcupadas([]);
       setFormData((prev) => ({
         ...prev,
