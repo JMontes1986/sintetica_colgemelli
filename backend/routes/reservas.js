@@ -105,11 +105,39 @@ router.post('/crear', async (req, res) => {
     const { nombre_cliente, email_cliente, celular_cliente, fecha, hora } = req.body;
 
     // Validaciones
-    if (!nombre_cliente || !email_cliente || !celular_cliente || !fecha || !hora) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    if (!nombre_cliente || nombre_cliente.length < 3 || nombre_cliente.length > 100) {
+      return res.status(400).json({ error: 'Nombre inválido' });
     }
 
-     const horaNormalizada = normalizarHora(hora);
+    if (!celular_cliente || !/^\d{10}$/.test(celular_cliente)) {
+      return res.status(400).json({ error: 'Teléfono debe tener 10 dígitos' });
+    }
+
+    if (!email_cliente || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email_cliente)) {
+      return res.status(400).json({ error: 'Email inválido' });
+    }
+
+    if (!fecha) {
+      return res.status(400).json({ error: 'Fecha es requerida' });
+    }
+
+     const fechaReserva = new Date(fecha);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    if (Number.isNaN(fechaReserva.getTime())) {
+      return res.status(400).json({ error: 'Fecha inválida' });
+    }
+
+    if (fechaReserva < hoy) {
+      return res.status(400).json({ error: 'No se pueden hacer reservas en fechas pasadas' });
+    }
+
+    if (!hora || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(hora)) {
+      return res.status(400).json({ error: 'Formato de hora inválido' });
+    }
+
+    const horaNormalizada = normalizarHora(hora);
 
     if (esHorarioEnElPasado(fecha, horaNormalizada)) {
       return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
