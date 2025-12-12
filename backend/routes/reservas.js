@@ -7,6 +7,16 @@ const router = express.Router();
 const HORA_APERTURA = 8;
 const HORA_CIERRE = 20;
 
+const esHorarioEnElPasado = (fecha, hora) => {
+  if (!fecha || !hora) return false;
+
+  const [ano, mes, dia] = fecha.split('-').map(Number);
+  const [horaReserva, minutoReserva] = hora.split(':').map(Number);
+  const fechaReserva = new Date(ano, mes - 1, dia, horaReserva, minutoReserva || 0);
+
+  return fechaReserva < new Date();
+};
+
 const normalizarHora = (hora) => {
   if (!hora) return '';
   return hora.toString().slice(0, 5);
@@ -50,12 +60,18 @@ router.post('/crear', async (req, res) => {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
+     const horaNormalizada = normalizarHora(hora);
+
+    if (esHorarioEnElPasado(fecha, horaNormalizada)) {
+      return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
+    }
+    
     // Verificar si ya existe reserva en esa fecha y hora
     const { data: existente, error: errorReservaExistente } = await supabase
       .from('reservas')
       .select('*')
       .eq('fecha', fecha)
-      .eq('hora', hora)
+      .eq('hora', horaNormalizada)
       .maybeSingle();
 
     if (errorReservaExistente) throw errorReservaExistente;
@@ -72,7 +88,7 @@ router.post('/crear', async (req, res) => {
         email_cliente,
         celular_cliente,
         fecha,
-        hora,
+        hora: horaNormalizada,
         estado: 'Pendiente'
       }])
       .select()
@@ -129,12 +145,18 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
+    const horaNormalizada = normalizarHora(hora);
+
+    if (esHorarioEnElPasado(fecha, horaNormalizada)) {
+      return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
+    }
+    
     // Verificar disponibilidad
     const { data: existente, error: errorReservaExistente } = await supabase
       .from('reservas')
       .select('*')
       .eq('fecha', fecha)
-      .eq('hora', hora)
+      .eq('hora', horaNormalizada)
       .maybeSingle();
 
     if (errorReservaExistente) throw errorReservaExistente;
@@ -150,7 +172,7 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
         email_cliente,
         celular_cliente,
         fecha,
-        hora,
+        hora: horaNormalizada,
         estado: 'Pendiente',
         creado_por: req.usuario.id
       }])
@@ -204,7 +226,9 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
     if (error) throw error;
 
     const horasOcupadas = reservasExistentes.map((reserva) => normalizarHora(reserva.hora));
-    const horasDisponibles = horariosDisponibles.filter(h => !horasOcupadas.includes(h));
+    const horasDisponibles = horariosDisponibles.filter(
+      (h) => !horasOcupadas.includes(h) && !esHorarioEnElPasado(fecha, h)
+    );
 
     res.json({
       fecha,
