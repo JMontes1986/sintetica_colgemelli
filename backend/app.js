@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
@@ -10,6 +11,21 @@ const healthRoutes = require('./routes/health');
 const configuracionRoutes = require('./routes/configuracion');
 
 const app = express();
+
+// Rate limiting
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5,
+  message: 'Demasiados intentos de login. Intenta en 15 minutos.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const reservasLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 10,
+  message: 'Demasiadas reservas. Intenta más tarde.'
+});
 
 // Permitir el dominio configurado y los dominios generados por Netlify (URL y PREVIEW)
 const allowedOrigins = [
@@ -62,6 +78,8 @@ const corsOptions = {
 // Middlewares
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/reservas/crear', reservasLimiter);
 
 // Rutas
 app.use('/api/auth', authRoutes);
