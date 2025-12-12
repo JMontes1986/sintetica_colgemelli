@@ -86,6 +86,13 @@ export const estadisticasAPI = {
   obtenerHoy: () => api.get('/estadisticas/hoy')
 };
 
+// API de Configuración
+export const configuracionAPI = {
+  obtenerHorarios: () => api.get('/configuracion/horarios'),
+  crearHorario: (payload) => api.post('/configuracion/horarios', payload),
+  eliminarHorario: (id) => api.delete(`/configuracion/horarios/${id}`)
+};
+
 // API de Autenticación
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
