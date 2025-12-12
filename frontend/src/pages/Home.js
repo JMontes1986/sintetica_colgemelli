@@ -124,6 +124,7 @@ const Home = () => {
 
     try {
       setEnviando(true);
+      const horaReservada = formData.hora;
       const response = await reservasAPI.crear(formData);
       const texto = `¡Reserva creada! Te esperamos el ${format(new Date(formData.fecha), "dd 'de' MMMM, yyyy", { locale: es })} a las ${formData.hora}.`;
       setMensaje({ tipo: 'exito', texto });
@@ -134,6 +135,25 @@ const Home = () => {
         fecha: formData.fecha,
         hora: ''
       });
+      
+      setHorasDisponibles((prev) => prev.filter((hora) => hora !== horaReservada));
+      setHorasOcupadas((prev) => {
+        if (prev.includes(horaReservada)) return prev;
+        return [...prev, horaReservada];
+      });
+
+      setDisponibilidadDias((prev) =>
+        prev.map((dia) =>
+          dia.fechaValor === formData.fecha
+            ? {
+                ...dia,
+                horasDisponibles: dia.horasDisponibles.filter((hora) => hora !== horaReservada),
+                horasOcupadas: [...(dia.horasOcupadas || []), horaReservada]
+              }
+            : dia
+        )
+      );
+      
       cargarDisponibilidad(formData.fecha);
       return response;
     } catch (error) {
@@ -376,19 +396,19 @@ const Home = () => {
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                       {HORAS_DEL_DIA.map((hora) => {
-                        const disponible = dia.horasDisponibles.includes(hora);
+                        const ocupado = dia.horasOcupadas?.includes(hora) || !dia.horasDisponibles.includes(hora);
                         return (
                           <div
                             key={`${dia.fechaValor}-${hora}`}
                             className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
-                              disponible
-                                ? 'border-green-200 bg-green-50 text-green-800'
-                                : 'border-gray-200 bg-gray-50 text-gray-600'
+                              ocupado
+                                ? 'border-red-200 bg-red-50 text-red-700'
+                                : 'border-green-200 bg-green-50 text-green-800'
                             }`}
                           >
                             <span className="font-semibold">{hora}</span>
                             <span className="text-xs uppercase tracking-wide">
-                              {disponible ? 'Disponible' : 'Ocupado'}
+                              {ocupado ? 'Ocupado' : 'Disponible'}
                             </span>
                           </div>
                         );
