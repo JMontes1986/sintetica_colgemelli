@@ -11,6 +11,10 @@ const HORAS_DEL_DIA = Array.from({ length: HORARIO_CIERRE - HORARIO_APERTURA + 1
   return `${hora.toString().padStart(2, '0')}:00`;
 });
 
+const NEQUI_PAYMENT_NUMBER = '312 881 7505';
+const NEQUI_QR_LINK =
+  process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/573128817505?text=Hola,%20quiero%20pagar%20mi%20reserva';
+
 const Home = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [formData, setFormData] = useState({
@@ -28,6 +32,7 @@ const Home = () => {
   const [disponibilidadDias, setDisponibilidadDias] = useState([]);
   const [cargandoDias, setCargandoDias] = useState(true);
   const [errorDias, setErrorDias] = useState('');
+  const [resumenReserva, setResumenReserva] = useState(null);
 
   const cargarDisponibilidad = async (fecha) => {
     try {
@@ -126,8 +131,17 @@ const Home = () => {
       setEnviando(true);
       const horaReservada = formData.hora;
       const response = await reservasAPI.crear(formData);
-      const texto = `¡Reserva creada! Te esperamos el ${format(new Date(formData.fecha), "dd 'de' MMMM, yyyy", { locale: es })} a las ${formData.hora}.`;
+      const reservaCreada = response.data?.reserva || formData;
+      const fechaLegible = format(new Date(reservaCreada.fecha || formData.fecha), "dd 'de' MMMM, yyyy", { locale: es });
+      const texto = `¡Reserva creada! Te esperamos el ${fechaLegible} a las ${reservaCreada.hora || formData.hora}.`;
       setMensaje({ tipo: 'exito', texto });
+      setResumenReserva({
+        nombre_cliente: reservaCreada.nombre_cliente,
+        email_cliente: reservaCreada.email_cliente,
+        celular_cliente: reservaCreada.celular_cliente,
+        fecha: reservaCreada.fecha,
+        hora: reservaCreada.hora
+      });
       setFormData({
         nombre_cliente: '',
         email_cliente: '',
@@ -174,6 +188,80 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    {resumenReserva && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black bg-opacity-50 px-4">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+            <button
+              onClick={() => setResumenReserva(null)}
+              className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
+              aria-label="Cerrar resumen de reserva"
+            >
+              ✕
+            </button>
+            <div className="grid gap-6 p-8 md:grid-cols-2">
+              <div>
+                <p className="text-sm font-semibold uppercase text-primary">Reserva creada</p>
+                <h2 className="mt-1 text-2xl font-bold text-gray-800">Detalles de tu reserva</h2>
+                <div className="mt-4 space-y-3 rounded-xl bg-gray-50 p-4">
+                  <div>
+                    <p className="text-xs uppercase text-gray-500">Día</p>
+                    <p className="text-lg font-semibold text-gray-800">
+                      {resumenReserva.fecha
+                        ? format(new Date(resumenReserva.fecha), "EEEE d 'de' MMMM, yyyy", { locale: es })
+                        : 'Fecha por confirmar'}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs uppercase text-gray-500">Hora</p>
+                      <p className="text-lg font-semibold text-gray-800">{resumenReserva.hora}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-500">Estado</p>
+                      <p className="text-sm font-semibold text-green-700">Pendiente de pago</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase text-gray-500">Reservado por</p>
+                    <p className="text-lg font-semibold text-gray-800">{resumenReserva.nombre_cliente}</p>
+                    <p className="text-sm text-gray-600">{resumenReserva.email_cliente}</p>
+                    <p className="text-sm text-gray-600">{resumenReserva.celular_cliente}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-green-50 p-4 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700">Paga tu reserva</p>
+                    <p className="text-xs text-gray-600">Nequi • Número {NEQUI_PAYMENT_NUMBER}</p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-primary shadow">Prioritario</span>
+                </div>
+                <div className="mt-4 flex flex-col items-center gap-3 rounded-lg bg-white p-4 shadow">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(NEQUI_QR_LINK)}`}
+                    alt="QR de pago Nequi"
+                    className="h-48 w-48 rounded-lg border border-gray-200 object-contain"
+                  />
+                  <p className="text-center text-sm text-gray-700">
+                    Escanea el código o usa el número <span className="font-semibold">{NEQUI_PAYMENT_NUMBER}</span> para
+                    completar tu pago por Nequi.
+                  </p>
+                  <a
+                    href={NEQUI_QR_LINK}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow hover:bg-green-600"
+                  >
+                    Abrir enlace de pago
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-6xl mx-auto px-4 py-12">
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
           <div>
