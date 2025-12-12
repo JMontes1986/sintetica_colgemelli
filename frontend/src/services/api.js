@@ -90,7 +90,8 @@ export const estadisticasAPI = {
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   verificar: () => api.get('/auth/verificar'),
-  registro: (datos) => api.post('/auth/registro', datos)
+  registro: (datos) => api.post('/auth/registro', datos),
+  registroSupabase: (email, password) => api.post('/auth/supabase-signup', { email, password })
 };
 
 // API de salud
