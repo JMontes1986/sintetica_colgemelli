@@ -20,6 +20,17 @@ const ensureServiceRole = () => {
 // Login
 router.post('/login', async (req, res) => {
   try {
+    const { isServiceRole, supabaseStatus } = ensureServiceRole();
+
+    if (!isServiceRole) {
+      return res.status(503).json({
+        error: 'Servicio de autenticación no disponible',
+        message:
+          'Activa SUPABASE_SERVICE_ROLE_KEY en el backend para consultar la tabla usuarios cuando RLS está habilitado.',
+        detalle: supabaseStatus
+      });
+    }
+    
     const supabase = getSupabase();
     const { email, password } = req.body;
 
@@ -39,6 +50,15 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ error: 'Credenciales inválidas' });
       }
 
+      if (error.code === '42501') {
+        return res.status(503).json({
+          error: 'Servicio de autenticación no disponible',
+          message:
+            'RLS está activo en la tabla usuarios y la clave actual no tiene permisos. Usa SUPABASE_SERVICE_ROLE_KEY en el backend.',
+          detalle: error
+        });
+      }
+      
       console.error('Error de Supabase al buscar usuario:', error);
       return res.status(503).json({ error: 'Servicio de autenticación no disponible' });
     }
