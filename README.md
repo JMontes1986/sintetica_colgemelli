@@ -161,6 +161,21 @@ cancha-reservas/
 - CORS configurado
 - Validación de datos en backend
 
+### Sanitización de inputs (SQL Injection)
+
+- Evita concatenar strings en queries SQL. Usa siempre los métodos del cliente de Supabase, que manejan el escapado y binding de valores.
+
+```javascript
+// ❌ NUNCA hagas esto (interpolación en SQL crudo):
+const query = `SELECT * FROM usuarios WHERE email = '${email}'`;
+
+// ✅ Usa el query builder de Supabase (sanitiza automáticamente):
+const { data } = await supabase
+  .from('usuarios')
+  .select('*')
+  .eq('email', email);
+```
+
 ## 📱 Rutas Frontend
 
 - `/` - Página pública de reservas
