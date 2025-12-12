@@ -368,14 +368,14 @@ const Home = () => {
           </div>
           <Link
             to="/login"
-            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-white text-primary font-semibold border border-primary shadow-sm hover:bg-primary hover:text-white transition"
+            className="hidden md:inline-flex items-center justify-center px-4 py-2 rounded-lg bg-white text-primary font-semibold border border-primary shadow-sm hover:bg-primary hover:text-white transition"
           >
             Acceso para administración
           </Link>
         </header>
-  
+              
         <div className="grid md:grid-cols-2 gap-8 items-start">
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+          <div className="bg-white rounded-2xl shadow-lg p-8 order-1">
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Reservar un horario</h2>
 
             {mensaje.texto && (
@@ -477,7 +477,7 @@ const Home = () => {
             </form>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+          <div className="bg-white rounded-2xl shadow-lg p-8 order-2">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-sm text-gray-500">Disponibilidad</p>
@@ -616,6 +616,14 @@ const Home = () => {
               ))}
             </div>
           )}
+        </div>
+            <div className="mt-10 md:hidden">
+          <Link
+            to="/login"
+            className="block w-full text-center px-4 py-3 rounded-lg bg-white text-primary font-semibold border border-primary shadow-sm hover:bg-primary hover:text-white transition"
+          >
+            Acceso para administración
+          </Link>
         </div>
       </div>
     </div>
