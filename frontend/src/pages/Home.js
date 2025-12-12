@@ -20,7 +20,7 @@ const DEFAULT_HORARIO = {
   horaCierre: '21:00'
 };
 
-const NEQUI_PAYMENT_NUMBER = '312 881 7505';
+const NEQUI_PAYMENT_NUMBER = '313 672 3305';
 const NEQUI_QR_LINK =
   process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/573128817505?text=Hola,%20quiero%20pagar%20mi%20reserva';
 const NEQUI_QR_IMAGE_URL =
@@ -329,7 +329,7 @@ const Home = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-gray-700">Paga tu reserva</p>
-                    <p className="text-xs text-gray-600">Nequi • Número {NEQUI_PAYMENT_NUMBER}</p>
+                    <p className="text-base font-bold text-gray-800">Nequi • Número {NEQUI_PAYMENT_NUMBER}</p>
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-primary shadow">Prioritario</span>
                 </div>
