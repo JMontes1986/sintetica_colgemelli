@@ -309,22 +309,32 @@ const Home = () => {
 
              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {HORAS_DEL_DIA.map((hora) => {
-                const disponible = horasDisponibles.includes(hora) && !horasOcupadas.includes(hora);
+                const estaReservada = horasOcupadas.includes(hora);
+                const disponible = horasDisponibles.includes(hora) && !estaReservada;
+                const estadoClase = disponible
+                  ? formData.hora === hora
+                    ? 'border-primary bg-green-50 text-primary'
+                    : 'border-gray-200 hover:border-primary hover:bg-green-50'
+                  : estaReservada
+                    ? 'border-rose-200 bg-rose-50 text-rose-700 cursor-not-allowed'
+                    : 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed';
+                
                 return (
                   <button
                     key={hora}
                     type="button"
                     onClick={() => disponible && setFormData({ ...formData, hora })}
                     disabled={!disponible}
-                    className={`p-3 rounded-lg border text-center font-semibold transition ${
-                      disponible
-                        ? formData.hora === hora
-                          ? 'border-primary bg-green-50 text-primary'
-                          : 'border-gray-200 hover:border-primary hover:bg-green-50'
-                        : 'border-red-200 bg-red-50 text-red-700 cursor-not-allowed'
-                    }`}
+                    className={`p-3 rounded-lg border text-center font-semibold transition ${estadoClase}`}
                   >
-                    {hora}
+                    <div className="flex flex-col items-center gap-1">
+                      <span>{hora}</span>
+                      {!disponible && (
+                        <span className="text-xs font-medium uppercase tracking-wide">
+                          {estaReservada ? 'Reservado' : 'No disponible'}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -396,19 +406,24 @@ const Home = () => {
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                       {HORAS_DEL_DIA.map((hora) => {
-                        const ocupado = dia.horasOcupadas?.includes(hora) || !dia.horasDisponibles.includes(hora);
+                        const estaReservada = dia.horasOcupadas?.includes(hora);
+                        const disponible = dia.horasDisponibles.includes(hora);
+                        const ocupado = estaReservada || !disponible;
+                        
                         return (
                           <div
                             key={`${dia.fechaValor}-${hora}`}
                             className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
-                              ocupado
-                                ? 'border-red-200 bg-red-50 text-red-700'
-                                : 'border-green-200 bg-green-50 text-green-800'
+                              estaReservada
+                                ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                : ocupado
+                                  ? 'border-gray-200 bg-gray-50 text-gray-600'
+                                  : 'border-green-200 bg-green-50 text-green-800'
                             }`}
                           >
                             <span className="font-semibold">{hora}</span>
                             <span className="text-xs uppercase tracking-wide">
-                              {ocupado ? 'Ocupado' : 'Disponible'}
+                              {estaReservada ? 'Reservado' : ocupado ? 'No disponible' : 'Disponible'}
                             </span>
                           </div>
                         );
