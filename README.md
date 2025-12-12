@@ -62,6 +62,18 @@ npm start
 npm run dev
 ```
 
+### 2.1 Crear un administrador inicial (opcional)
+
+Para evitar problemas de credenciales inválidas al crear usuarios manualmente en Supabase, puedes definir un administrador con hash seguro usando variables de entorno. Agrega estas variables a tu `.env` del backend (o a las variables de entorno del despliegue) antes de iniciar el servidor:
+
+```env
+ADMIN_EMAIL=admin@tudominio.com
+ADMIN_PASSWORD=TuContraseñaSegura
+ADMIN_NAME=Administrador Principal
+```
+
+Al arrancar el backend se creará (o actualizará) automáticamente ese usuario con rol `admin` y la contraseña hasheada. Si prefieres crear usuarios manualmente en la tabla `usuarios`, recuerda que el campo `password_hash` debe contener la contraseña hasheada con bcrypt.
+
 ### 3. Frontend
 
 ```bash
