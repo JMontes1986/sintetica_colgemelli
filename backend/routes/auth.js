@@ -106,7 +106,7 @@ router.post('/supabase-signup', async (req, res) => {
       return res.status(400).json({
         error: 'Faltan credenciales de servicio de Supabase',
         message:
-          'Configura SUPABASE_SERVICE_ROLE_KEY (o usa REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY en el frontend) para crear usuarios.',
+          'Configura SUPABASE_SERVICE_ROLE_KEY en el backend. El frontend no debe exponer ninguna clave de Supabase.',
         detalle: supabaseStatus
       });
     }
