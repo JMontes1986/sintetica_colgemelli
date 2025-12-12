@@ -489,37 +489,40 @@ const Home = () => {
             </div>
 
              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {(horarioDelDia.horas || []).map((horaSlot) => {
-                const estaReservada = horasOcupadas.includes(horaSlot);
-                const disponible = horasDisponibles.includes(horaSlot) && !estaReservada;
-                const estadoClase = disponible
-                  ? formData.hora === horaSlot
-                    ? 'border-primary bg-green-50 text-primary'
-                    : 'border-gray-200 hover:border-primary hover:bg-green-50'
-                  : estaReservada
-                    ? 'border-rose-200 bg-rose-50 text-rose-700 cursor-not-allowed'
-                    : 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed';
-                
-                return (
-                  <button
-                    ? formData.hora === horaSlot
-                    type="button"
-                    onClick={() => disponible && setFormData({ ...formData, hora: horaSlot })}
-                    disabled={!disponible}
-                    className={`p-3 rounded-lg border text-center font-semibold transition ${estadoClase}`}
-                  >
-                    <div className="flex flex-col items-center gap-1">
-                      <span>{horaSlot}</span>
-                      {!disponible && (
-                        <span className="text-xs font-medium uppercase tracking-wide">
-                          {estaReservada ? 'Reservado' : 'No disponible'}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                {(horarioDelDia.horas || []).map((horaSlot) => {
+                  const estaReservada = horasOcupadas.includes(horaSlot);
+                  const disponible = horasDisponibles.includes(horaSlot) && !estaReservada;
+                  const estaSeleccionada = formData.hora === horaSlot;
+
+                  let estadoClase = 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed';
+                  if (estaReservada) {
+                    estadoClase = 'border-rose-200 bg-rose-50 text-rose-700 cursor-not-allowed';
+                  } else if (disponible && estaSeleccionada) {
+                    estadoClase = 'border-primary bg-green-50 text-primary';
+                  } else if (disponible) {
+                    estadoClase = 'border-gray-200 hover:border-primary hover:bg-green-50';
+                  }
+
+                  return (
+                    <button
+                      key={horaSlot}
+                      type="button"
+                      onClick={() => disponible && setFormData({ ...formData, hora: horaSlot })}
+                      disabled={!disponible}
+                      className={`p-3 rounded-lg border text-center font-semibold transition ${estadoClase}`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span>{horaSlot}</span>
+                        {!disponible && (
+                          <span className="text-xs font-medium uppercase tracking-wide">
+                            {estaReservada ? 'Reservado' : 'No disponible'}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             {(horarioDelDia.horas || []).filter((horaSlot) => horasDisponibles.includes(horaSlot) && !horasOcupadas.includes(horaSlot)).length === 0 &&
               !consultando && (
                 <p className="text-sm text-red-600 mt-2">No hay horarios disponibles para esta fecha.</p>
