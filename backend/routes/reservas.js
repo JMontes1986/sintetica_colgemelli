@@ -1,6 +1,7 @@
 const express = require('express');
 const getSupabase = require('../config/supabase');
 const { verificarToken, verificarRol } = require('../middleware/auth');
+const xss = require('xss');
 
 const router = express.Router();
 
@@ -53,6 +54,8 @@ const buildHorariosDisponibles = (horaApertura = HORA_APERTURA, horaCierre = HOR
 
   return horarios;
 };
+
+const sanitizarTexto = (valor) => (typeof valor === 'string' ? xss(valor) : valor);
 
 const obtenerHorarioPorFecha = async (supabase, fecha) => {
   const horarioPorDefecto = {
@@ -111,7 +114,11 @@ const handleSupabaseError = (res, error, defaultMessage, logContext) => {
 router.post('/crear', async (req, res) => {
   try {
     const supabase = getSupabase();
-    const { nombre_cliente, email_cliente, celular_cliente, fecha, hora } = req.body;
+    const nombre_cliente = sanitizarTexto(req.body?.nombre_cliente);
+    const email_cliente = sanitizarTexto(req.body?.email_cliente);
+    const celular_cliente = sanitizarTexto(req.body?.celular_cliente);
+    const fecha = sanitizarTexto(req.body?.fecha);
+    const hora = sanitizarTexto(req.body?.hora);
 
     // Validaciones
     if (!nombre_cliente || nombre_cliente.length < 3 || nombre_cliente.length > 100) {
@@ -237,7 +244,11 @@ router.get('/', verificarToken, async (req, res) => {
 router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
   try {
     const supabase = getSupabase();
-    const { nombre_cliente, email_cliente, celular_cliente, fecha, hora } = req.body;
+    const nombre_cliente = sanitizarTexto(req.body?.nombre_cliente);
+    const email_cliente = sanitizarTexto(req.body?.email_cliente);
+    const celular_cliente = sanitizarTexto(req.body?.celular_cliente);
+    const fecha = sanitizarTexto(req.body?.fecha);
+    const hora = sanitizarTexto(req.body?.hora);
 
     if (!nombre_cliente || !email_cliente || !celular_cliente || !fecha || !hora) {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
