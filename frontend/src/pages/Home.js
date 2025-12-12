@@ -140,14 +140,14 @@ const Home = () => {
       try {
         const resultados = await Promise.all(
           dias.map(async (dia) => {
-                const cacheDia = disponibilidadCache[dia.fechaValor];
+                    const cacheDia = disponibilidadCache[dia.fechaValor];
                 if (cacheDia) {
                   return { ...dia, ...cacheDia };
                 }
             
             try {
               const response = await reservasAPI.obtenerDisponibilidad(dia.fechaValor);
-              const horario = response.data?.horario?.horas?.length
+             const horario = response.data?.horario?.horas?.length
                 ? {
                     horas: response.data.horario.horas,
                     horaApertura: response.data.horario.horaApertura,
@@ -489,11 +489,11 @@ const Home = () => {
             </div>
 
              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              Abierto {horarioDelDia.horaApertura} - {horarioDelDia.horaCierre}
-                const estaReservada = horasOcupadas.includes(hora);
-                const disponible = horasDisponibles.includes(hora) && !estaReservada;
+              {(horarioDelDia.horas || []).map((horaSlot) => {
+                const estaReservada = horasOcupadas.includes(horaSlot);
+                const disponible = horasDisponibles.includes(horaSlot) && !estaReservada;
                 const estadoClase = disponible
-                  ? formData.hora === hora
+                  ? formData.hora === horaSlot
                     ? 'border-primary bg-green-50 text-primary'
                     : 'border-gray-200 hover:border-primary hover:bg-green-50'
                   : estaReservada
@@ -502,14 +502,14 @@ const Home = () => {
                 
                 return (
                   <button
-                    key={hora}
+                    ? formData.hora === horaSlot
                     type="button"
-                    onClick={() => disponible && setFormData({ ...formData, hora })}
+                    onClick={() => disponible && setFormData({ ...formData, hora: horaSlot })}
                     disabled={!disponible}
                     className={`p-3 rounded-lg border text-center font-semibold transition ${estadoClase}`}
                   >
                     <div className="flex flex-col items-center gap-1">
-                      <span>{hora}</span>
+                      <span>{horaSlot}</span>
                       {!disponible && (
                         <span className="text-xs font-medium uppercase tracking-wide">
                           {estaReservada ? 'Reservado' : 'No disponible'}
@@ -520,7 +520,7 @@ const Home = () => {
                 );
               })}
             </div>
-            {horarioDelDia.horas.filter((hora) => horasDisponibles.includes(hora) && !horasOcupadas.includes(hora)).length === 0 &&
+            {(horarioDelDia.horas || []).filter((horaSlot) => horasDisponibles.includes(horaSlot) && !horasOcupadas.includes(horaSlot)).length === 0 &&
               !consultando && (
                 <p className="text-sm text-red-600 mt-2">No hay horarios disponibles para esta fecha.</p>
               )}
