@@ -121,36 +121,36 @@ const Home = () => {
             
             try {
               const response = await reservasAPI.obtenerDisponibilidad(dia.fechaValor);
-              const data = {
-                horasDisponibles: response.data.horasDisponibles,
-                horasOcupadas: response.data.horasOcupadas,
+              const diaData = {
+                horasDisponibles: response.data?.horasDisponibles || [],
+                horasOcupadas: response.data?.horasOcupadas || [],
                 error: ''
               };
 
               setDisponibilidadCache((prev) => ({
                 ...prev,
-                [dia.fechaValor]: data
+                [dia.fechaValor]: diaData
               }));
 
-              return { ...dia, ...data };
+              return { ...dia, ...diaData };
             } catch (error) {
-              const data = {
+              const diaData = {
                 horasDisponibles: [],
                 horasOcupadas: [],
                 error: error.response?.data?.error || 'Sin datos de disponibilidad'
               };
-            }
-            
+                        
             setDisponibilidadCache((prev) => ({
                 ...prev,
-                [dia.fechaValor]: data
+                [dia.fechaValor]: diaData
               }));
 
-              return { ...dia, ...data };
+              return { ...dia, ...diaData };
+             }
           })
         );
 
-        if (!cancelado) {
+       if (!cancelado) {
           setDisponibilidadDias(resultados);
         }
       } catch (error) {
