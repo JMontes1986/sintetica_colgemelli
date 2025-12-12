@@ -357,10 +357,6 @@ const Home = () => {
               </div>
             )}
 
-            <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">
-              <p className="font-semibold">¿Ya eres parte del equipo?</p>
-              <p className="mt-1">El panel de administración y cancha está disponible desde el botón de acceso.</p>
-            </div>
           </div>
         </div>
 
