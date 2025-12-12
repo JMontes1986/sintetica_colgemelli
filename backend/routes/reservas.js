@@ -5,7 +5,7 @@ const { verificarToken, verificarRol } = require('../middleware/auth');
 const router = express.Router();
 
 const HORA_APERTURA = 8;
-const HORA_CIERRE = 20;
+const HORA_CIERRE = 21;
 const TIMEZONE_COLOMBIA = 'America/Bogota';
 const TIMEZONE_OFFSET_COLOMBIA = '-05:00';
 
@@ -32,14 +32,58 @@ const formatearReserva = (reserva) => ({
   hora: normalizarHora(reserva.hora)
 });
 
-const buildHorariosDisponibles = () => {
+const buildHorariosDisponibles = (horaApertura = HORA_APERTURA, horaCierre = HORA_CIERRE) => {
+  const apertura = Number.isInteger(horaApertura) ? horaApertura : HORA_APERTURA;
+  const cierre = Number.isInteger(horaCierre) ? horaCierre : HORA_CIERRE;
+  
   const horarios = [];
 
-  for (let i = HORA_APERTURA; i <= HORA_CIERRE; i++) {
+  for (let i = apertura; i <= cierre; i++) {
     horarios.push(`${i.toString().padStart(2, '0')}:00`);
   }
 
   return horarios;
+};
+
+const obtenerHorarioPorFecha = async (supabase, fecha) => {
+  const horarioPorDefecto = {
+    horaApertura: HORA_APERTURA,
+    horaCierre: HORA_CIERRE,
+    horas: buildHorariosDisponibles()
+  };
+
+  if (!supabase || !fecha) return horarioPorDefecto;
+
+  try {
+    const { data, error } = await supabase
+      .from('configuracion_horarios')
+      .select('id, fecha_inicio, fecha_fin, hora_apertura, hora_cierre')
+      .lte('fecha_inicio', fecha)
+      .gte('fecha_fin', fecha)
+      .order('fecha_inicio', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    if (!data) return horarioPorDefecto;
+
+    const horaApertura = parseInt(data.hora_apertura.toString().slice(0, 2), 10);
+    const horaCierre = parseInt(data.hora_cierre.toString().slice(0, 2), 10);
+
+    const horas = buildHorariosDisponibles(horaApertura, horaCierre);
+
+    return {
+      horaApertura,
+      horaCierre,
+      horas
+    };
+  } catch (error) {
+    console.error('Error al obtener horario personalizado:', error);
+    return horarioPorDefecto;
+  }
 };
 
 const handleSupabaseError = (res, error, defaultMessage, logContext) => {
@@ -72,6 +116,12 @@ router.post('/crear', async (req, res) => {
     }
     
     // Verificar si ya existe reserva en esa fecha y hora
+    const horarioDelDia = await obtenerHorarioPorFecha(supabase, fecha);
+
+    if (!horarioDelDia.horas.includes(horaNormalizada)) {
+      return res.status(400).json({ error: 'La cancha no está habilitada para ese horario.' });
+    }
+    
     const { data: existente, error: errorReservaExistente } = await supabase
       .from('reservas')
       .select('*')
@@ -156,6 +206,12 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
     }
     
+    const horarioDelDia = await obtenerHorarioPorFecha(supabase, fecha);
+
+    if (!horarioDelDia.horas.includes(horaNormalizada)) {
+      return res.status(400).json({ error: 'La cancha no está habilitada para ese horario.' });
+    }
+    
     // Verificar disponibilidad
     const { data: existente, error: errorReservaExistente } = await supabase
       .from('reservas')
@@ -220,7 +276,8 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
     const supabase = getSupabase();
     const { fecha } = req.params;
 
-    const horariosDisponibles = buildHorariosDisponibles();
+    const horarioDelDia = await obtenerHorarioPorFecha(supabase, fecha);
+    const horariosDisponibles = horarioDelDia.horas;
     
     // Obtener reservas existentes para esa fecha
     const { data: reservasExistentes, error } = await supabase
@@ -238,7 +295,12 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
     res.json({
       fecha,
       horasDisponibles,
-      horasOcupadas
+      horasOcupadas,
+      horario: {
+        horaApertura: `${horarioDelDia.horaApertura.toString().padStart(2, '0')}:00`,
+        horaCierre: `${horarioDelDia.horaCierre.toString().padStart(2, '0')}:00`,
+        horas: horarioDelDia.horas
+      }
     });
   } catch (error) {
    // En caso de cualquier error (incluida la falta de configuración de Supabase)
@@ -250,6 +312,11 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
       fecha: req.params.fecha,
       horasDisponibles: buildHorariosDisponibles(),
       horasOcupadas: [],
+      horario: {
+        horaApertura: `${HORA_APERTURA.toString().padStart(2, '0')}:00`,
+        horaCierre: `${HORA_CIERRE.toString().padStart(2, '0')}:00`,
+        horas: buildHorariosDisponibles()
+      },
       error: 'Se usó disponibilidad por defecto debido a un problema al consultar Supabase'
     });
   }
