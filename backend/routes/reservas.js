@@ -7,6 +7,16 @@ const router = express.Router();
 const HORA_APERTURA = 8;
 const HORA_CIERRE = 20;
 
+const normalizarHora = (hora) => {
+  if (!hora) return '';
+  return hora.toString().slice(0, 5);
+};
+
+const formatearReserva = (reserva) => ({
+  ...reserva,
+  hora: normalizarHora(reserva.hora)
+});
+
 const buildHorariosDisponibles = () => {
   const horarios = [];
 
@@ -72,7 +82,7 @@ router.post('/crear', async (req, res) => {
 
     res.status(201).json({
       message: 'Reserva creada exitosamente',
-      reserva: data
+      reserva: formatearReserva(data)
     });
   } catch (error) {
     return handleSupabaseError(res, error, 'Error al crear la reserva', 'Error al crear reserva:');
@@ -103,7 +113,7 @@ router.get('/', verificarToken, async (req, res) => {
 
     if (error) throw error;
 
-    res.json({ reservas: data });
+    res.json({ reservas: data.map(formatearReserva) });
   } catch (error) {
     return handleSupabaseError(res, error, 'Error al obtener reservas', 'Error al obtener reservas:');
   }
@@ -151,7 +161,7 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
 
     res.status(201).json({
       message: 'Reserva creada exitosamente',
-      reserva: data
+      reserva: formatearReserva(data)
     });
   } catch (error) {
     return handleSupabaseError(res, error, 'Error al crear la reserva', 'Error al crear reserva manual:');
@@ -193,7 +203,7 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
 
     if (error) throw error;
 
-    const horasOcupadas = reservasExistentes.map(r => r.hora);
+    const horasOcupadas = reservasExistentes.map((reserva) => normalizarHora(reserva.hora));
     const horasDisponibles = horariosDisponibles.filter(h => !horasOcupadas.includes(h));
 
     res.json({
@@ -232,7 +242,7 @@ router.get('/:id', verificarToken, async (req, res) => {
       return res.status(404).json({ error: 'Reserva no encontrada' });
     }
 
-    res.json({ reserva: data });
+    res.json({ reserva: formatearReserva(data) });
   } catch (error) {
     return handleSupabaseError(res, error, 'Error al obtener la reserva', 'Error al obtener reserva:');
   }
@@ -260,7 +270,7 @@ router.patch('/:id/estado', verificarToken, verificarRol('cancha', 'admin'), asy
 
     res.json({
       message: 'Estado actualizado exitosamente',
-      reserva: data
+      reserva: formatearReserva(data)
     });
   } catch (error) {
     return handleSupabaseError(res, error, 'Error al actualizar el estado', 'Error al actualizar estado:');
