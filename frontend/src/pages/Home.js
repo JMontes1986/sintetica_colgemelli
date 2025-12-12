@@ -15,13 +15,10 @@ const NEQUI_PAYMENT_NUMBER = '312 881 7505';
 const NEQUI_QR_LINK =
   process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/573128817505?text=Hola,%20quiero%20pagar%20mi%20reserva';
 
-const timeout = setTimeout(cargarDisponibilidadSemanal, 200);
-
-    return () => {
-      cancelado = true;
-      clearTimeout(timeout);
-    };
-  }, [disponibilidadCache]);
+const parseFechaLocal = (fecha) => {
+  if (!fecha) return new Date();
+  return new Date(`${fecha}T00:00:00`);
+};
 
 const Home = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -148,16 +145,15 @@ const Home = () => {
                 error: error.response?.data?.error || 'Sin datos de disponibilidad'
               };
                         
-            setDisponibilidadCache((prev) => ({
+              setDisponibilidadCache((prev) => ({
                 ...prev,
                 [dia.fechaValor]: diaData
               }));
 
               return { ...dia, ...diaData };
-             }
+            }
           })
         );
-
        if (!cancelado) {
           setDisponibilidadDias(resultados);
         }
@@ -172,7 +168,11 @@ const Home = () => {
       }
     };
 
-    const timeout = setTimeout(cargarDisponibilidadSemanal, 200);
+    const timeout = setTimeout(() => {
+      if (!cancelado) {
+        cargarDisponibilidadSemanal();
+      }
+    }, 200);
 
     return () => {
       cancelado = true;
