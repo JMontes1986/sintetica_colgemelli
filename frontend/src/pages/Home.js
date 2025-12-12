@@ -15,6 +15,14 @@ const NEQUI_PAYMENT_NUMBER = '312 881 7505';
 const NEQUI_QR_LINK =
   process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/573128817505?text=Hola,%20quiero%20pagar%20mi%20reserva';
 
+const timeout = setTimeout(cargarDisponibilidadSemanal, 200);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(timeout);
+    };
+  }, [disponibilidadCache]);
+
 const Home = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [formData, setFormData] = useState({
@@ -186,7 +194,7 @@ const Home = () => {
       const horaReservada = formData.hora;
       const response = await reservasAPI.crear(formData);
       const reservaCreada = response.data?.reserva || formData;
-      const fechaLegible = format(new Date(reservaCreada.fecha || formData.fecha), "dd 'de' MMMM, yyyy", { locale: es });
+      const fechaLegible = format(parseFechaLocal(reservaCreada.fecha || formData.fecha), "dd 'de' MMMM, yyyy", { locale: es });
       const texto = `¡Reserva creada! Te esperamos el ${fechaLegible} a las ${reservaCreada.hora || formData.hora}.`;
       setMensaje({ tipo: 'exito', texto });
       setResumenReserva({
@@ -261,7 +269,7 @@ const Home = () => {
                     <p className="text-xs uppercase text-gray-500">Día</p>
                     <p className="text-lg font-semibold text-gray-800">
                       {resumenReserva.fecha
-                        ? format(new Date(resumenReserva.fecha), "EEEE d 'de' MMMM, yyyy", { locale: es })
+                        ? format(parseFechaLocal(resumenReserva.fecha), "EEEE d 'de' MMMM, yyyy", { locale: es })
                         : 'Fecha por confirmar'}
                     </p>
                   </div>
@@ -441,7 +449,7 @@ const Home = () => {
               <div>
                 <p className="text-sm text-gray-500">Disponibilidad</p>
                 <h3 className="text-xl font-semibold text-gray-800">
-                  {format(new Date(formData.fecha), "EEEE d 'de' MMMM", { locale: es })}
+                  {format(parseFechaLocal(formData.fecha), "EEEE d 'de' MMMM", { locale: es })}
                 </h3>
               </div>
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
