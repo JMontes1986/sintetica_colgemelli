@@ -4,12 +4,21 @@ import { reservasAPI } from '../services/api';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-const HORARIO_APERTURA = 8;
-const HORARIO_CIERRE = 20;
-const HORAS_DEL_DIA = Array.from({ length: HORARIO_CIERRE - HORARIO_APERTURA + 1 }, (_, idx) => {
-  const hora = HORARIO_APERTURA + idx;
-  return `${hora.toString().padStart(2, '0')}:00`;
-});
+const generarHoras = (horaApertura = '08:00', horaCierre = '21:00') => {
+  const inicio = parseInt(horaApertura.slice(0, 2), 10) || 8;
+  const fin = parseInt(horaCierre.slice(0, 2), 10) || 21;
+
+  return Array.from({ length: fin - inicio + 1 }, (_, idx) => {
+    const hora = inicio + idx;
+    return `${hora.toString().padStart(2, '0')}:00`;
+  });
+};
+
+const DEFAULT_HORARIO = {
+  horas: generarHoras(),
+  horaApertura: '08:00',
+  horaCierre: '21:00'
+};
 
 const NEQUI_PAYMENT_NUMBER = '312 881 7505';
 const NEQUI_QR_LINK =
@@ -27,11 +36,12 @@ const Home = () => {
     email_cliente: '',
     celular_cliente: '',
     fecha: today,
-    hora: HORAS_DEL_DIA[0]
+    hora: DEFAULT_HORARIO.horas[0]
   });
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
-  const [horasDisponibles, setHorasDisponibles] = useState(HORAS_DEL_DIA);
+  const [horasDisponibles, setHorasDisponibles] = useState(DEFAULT_HORARIO.horas);
   const [horasOcupadas, setHorasOcupadas] = useState([]);
+  const [horarioDelDia, setHorarioDelDia] = useState(DEFAULT_HORARIO);
   const [consultando, setConsultando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [disponibilidadDias, setDisponibilidadDias] = useState([]);
@@ -40,8 +50,9 @@ const Home = () => {
   const [resumenReserva, setResumenReserva] = useState(null);
   const [disponibilidadCache, setDisponibilidadCache] = useState({
     [today]: {
-      horasDisponibles: HORAS_DEL_DIA,
+      horasDisponibles: DEFAULT_HORARIO.horas,
       horasOcupadas: [],
+      horario: DEFAULT_HORARIO,
       error: ''
     }
   });
@@ -51,20 +62,28 @@ const Home = () => {
       setConsultando(true);
       const response = await reservasAPI.obtenerDisponibilidad(fecha);
       const horasOcupadasAPI = response.data.horasOcupadas || [];
-      const horas = response.data.horasDisponibles?.length
-        ? response.data.horasDisponibles
-        : HORAS_DEL_DIA;
+      const horario = response.data.horario?.horas?.length
+        ? {
+            horas: response.data.horario.horas,
+            horaApertura: response.data.horario.horaApertura,
+            horaCierre: response.data.horario.horaCierre
+          }
+        : DEFAULT_HORARIO;
+
+      const horas = horario.horas?.length ? horario.horas : DEFAULT_HORARIO.horas;
       const horasLibres = horas.filter((hora) => !horasOcupadasAPI.includes(hora));
       const horasSeleccionables = horasLibres.length ? horasLibres : horas;
 
       setHorasDisponibles(horasSeleccionables);
       setHorasOcupadas(horasOcupadasAPI);
+      setHorarioDelDia(horario);
 
       setDisponibilidadCache((prev) => ({
         ...prev,
         [fecha]: {
           horasDisponibles: horasSeleccionables,
           horasOcupadas: horasOcupadasAPI,
+          horario,
           error: ''
         }
       }));
@@ -76,17 +95,19 @@ const Home = () => {
       }));
     } catch (error) {
       // Si no se puede consultar la API, mostramos todos los horarios para evitar dejar la UI vacía
-      setHorasDisponibles(HORAS_DEL_DIA);
+      setHorasDisponibles(DEFAULT_HORARIO.horas);
       setHorasOcupadas([]);
+      setHorarioDelDia(DEFAULT_HORARIO);
       setFormData((prev) => ({
         ...prev,
-        hora: HORAS_DEL_DIA.includes(prev.hora) ? prev.hora : HORAS_DEL_DIA[0]
+        hora: DEFAULT_HORARIO.horas.includes(prev.hora) ? prev.hora : DEFAULT_HORARIO.horas[0]
       }));
       setDisponibilidadCache((prev) => ({
         ...prev,
         [fecha]: {
-          horasDisponibles: HORAS_DEL_DIA,
+          horasDisponibles: DEFAULT_HORARIO.horas,
           horasOcupadas: [],
+          horario: DEFAULT_HORARIO,
           error: error.response?.data?.error || 'Sin datos de disponibilidad'
         }
       }));
@@ -119,16 +140,25 @@ const Home = () => {
       try {
         const resultados = await Promise.all(
           dias.map(async (dia) => {
-            const cacheDia = disponibilidadCache[dia.fechaValor];
-            if (cacheDia) {
-              return { ...dia, ...cacheDia };
-            }
+                const cacheDia = disponibilidadCache[dia.fechaValor];
+                if (cacheDia) {
+                  return { ...dia, ...cacheDia };
+                }
             
             try {
               const response = await reservasAPI.obtenerDisponibilidad(dia.fechaValor);
+              const horario = response.data?.horario?.horas?.length
+                ? {
+                    horas: response.data.horario.horas,
+                    horaApertura: response.data.horario.horaApertura,
+                    horaCierre: response.data.horario.horaCierre
+                  }
+                : DEFAULT_HORARIO;
+              
               const diaData = {
-                horasDisponibles: response.data?.horasDisponibles || [],
+                horasDisponibles: response.data?.horasDisponibles || horario.horas,
                 horasOcupadas: response.data?.horasOcupadas || [],
+                horario,
                 error: ''
               };
 
@@ -140,8 +170,9 @@ const Home = () => {
               return { ...dia, ...diaData };
             } catch (error) {
               const diaData = {
-                horasDisponibles: [],
+                horasDisponibles: DEFAULT_HORARIO.horas,
                 horasOcupadas: [],
+                horario: DEFAULT_HORARIO,
                 error: error.response?.data?.error || 'Sin datos de disponibilidad'
               };
                         
@@ -453,12 +484,12 @@ const Home = () => {
                 </h3>
               </div>
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
-                Abierto 8:00 - 20:00
+                Abierto {horarioDelDia.horaApertura} - {horarioDelDia.horaCierre}
               </span>
             </div>
 
              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {HORAS_DEL_DIA.map((hora) => {
+              Abierto {horarioDelDia.horaApertura} - {horarioDelDia.horaCierre}
                 const estaReservada = horasOcupadas.includes(hora);
                 const disponible = horasDisponibles.includes(hora) && !estaReservada;
                 const estadoClase = disponible
@@ -489,7 +520,7 @@ const Home = () => {
                 );
               })}
             </div>
-            {HORAS_DEL_DIA.filter((hora) => horasDisponibles.includes(hora) && !horasOcupadas.includes(hora)).length === 0 &&
+            {horarioDelDia.horas.filter((hora) => horasDisponibles.includes(hora) && !horasOcupadas.includes(hora)).length === 0 &&
               !consultando && (
                 <p className="text-sm text-red-600 mt-2">No hay horarios disponibles para esta fecha.</p>
               )}
@@ -551,7 +582,7 @@ const Home = () => {
                     <p className="text-sm text-red-700">Sin reservas</p>
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                      {HORAS_DEL_DIA.map((hora) => {
+                      {(dia.horario?.horas || DEFAULT_HORARIO.horas).map((hora) => {
                         const estaReservada = dia.horasOcupadas?.includes(hora);
                         const disponible = dia.horasDisponibles.includes(hora);
                         const ocupado = estaReservada || !disponible;
