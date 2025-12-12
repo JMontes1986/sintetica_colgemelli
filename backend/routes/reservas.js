@@ -8,10 +8,19 @@ const HORA_APERTURA = 8;
 const HORA_CIERRE = 21;
 const TIMEZONE_COLOMBIA = 'America/Bogota';
 const TIMEZONE_OFFSET_COLOMBIA = '-05:00';
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_REGEX = /^\d{2}:\d{2}$/;
+const ESTADOS_VALIDOS = ['Pendiente', 'Jugado'];
 
 const obtenerFechaActualColombia = () => new Date(
   new Date().toLocaleString('en-US', { timeZone: TIMEZONE_COLOMBIA })
 );
+
+const esFechaValida = (valor) => Boolean(valor && DATE_REGEX.test(valor));
+
+const esHoraValida = (valor) => Boolean(valor && TIME_REGEX.test(valor));
+
+const esIdValido = (valor) => /^\d+$/.test(String(valor));
 
 const esHorarioEnElPasado = (fecha, hora) => {
   if (!fecha || !hora) return false;
@@ -117,11 +126,11 @@ router.post('/crear', async (req, res) => {
       return res.status(400).json({ error: 'Email inválido' });
     }
 
-    if (!fecha) {
-      return res.status(400).json({ error: 'Fecha es requerida' });
+    if (!esFechaValida(fecha)) {
+      return res.status(400).json({ error: 'Fecha es requerida y debe tener formato YYYY-MM-DD' });
     }
 
-     const fechaReserva = new Date(fecha);
+    const fechaReserva = new Date(fecha);
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
@@ -133,8 +142,8 @@ router.post('/crear', async (req, res) => {
       return res.status(400).json({ error: 'No se pueden hacer reservas en fechas pasadas' });
     }
 
-    if (!hora || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(hora)) {
-      return res.status(400).json({ error: 'Formato de hora inválido' });
+    if (!esHoraValida(hora)) {
+      return res.status(400).json({ error: 'Hora es requerida y debe tener formato HH:mm' });
     }
 
     const horaNormalizada = normalizarHora(hora);
@@ -202,9 +211,15 @@ router.get('/', verificarToken, async (req, res) => {
 
     // Filtros opcionales
     if (fecha) {
+      if (!esFechaValida(fecha)) {
+        return res.status(400).json({ error: 'Fecha inválida. Usa formato YYYY-MM-DD.' });
+      }
       query = query.eq('fecha', fecha);
     }
     if (estado) {
+      if (!ESTADOS_VALIDOS.includes(estado)) {
+        return res.status(400).json({ error: 'Estado inválido' });
+      }
       query = query.eq('estado', estado);
     }
 
@@ -228,6 +243,14 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
+    if (!esFechaValida(fecha)) {
+      return res.status(400).json({ error: 'Fecha inválida. Usa formato YYYY-MM-DD.' });
+    }
+
+    if (!esHoraValida(hora)) {
+      return res.status(400).json({ error: 'Hora inválida. Usa formato HH:mm.' });
+    }
+    
     const horaNormalizada = normalizarHora(hora);
 
     if (esHorarioEnElPasado(fecha, horaNormalizada)) {
@@ -285,6 +308,10 @@ router.delete('/:id', verificarToken, verificarRol('admin'), async (req, res) =>
     const supabase = getSupabase();
     const { id } = req.params;
 
+    if (!esIdValido(id)) {
+      return res.status(400).json({ error: 'Identificador inválido' });
+    }
+    
     const { error } = await supabase
       .from('reservas')
       .delete()
@@ -304,6 +331,10 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
     const supabase = getSupabase();
     const { fecha } = req.params;
 
+    if (!esFechaValida(fecha)) {
+      return res.status(400).json({ error: 'Fecha inválida. Usa formato YYYY-MM-DD.' });
+    }
+    
     const horarioDelDia = await obtenerHorarioPorFecha(supabase, fecha);
     const horariosDisponibles = horarioDelDia.horas;
     
@@ -356,6 +387,10 @@ router.get('/:id', verificarToken, async (req, res) => {
     const supabase = getSupabase();
     const { id } = req.params;
 
+    if (!esIdValido(id)) {
+      return res.status(400).json({ error: 'Identificador inválido' });
+    }
+    
     const { data, error } = await supabase
       .from('reservas')
       .select('*')
@@ -379,7 +414,11 @@ router.patch('/:id/estado', verificarToken, verificarRol('cancha', 'admin'), asy
     const { id } = req.params;
     const { estado } = req.body;
 
-    if (!estado || !['Pendiente', 'Jugado'].includes(estado)) {
+    if (!esIdValido(id)) {
+      return res.status(400).json({ error: 'Identificador inválido' });
+    }
+
+    if (!estado || !ESTADOS_VALIDOS.includes(estado)) {
       return res.status(400).json({ error: 'Estado inválido' });
     }
 
