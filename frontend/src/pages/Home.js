@@ -22,10 +22,10 @@ const Home = () => {
     email_cliente: '',
     celular_cliente: '',
     fecha: today,
-    hora: ''
+    hora: HORAS_DEL_DIA[0]
   });
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
-  const [horasDisponibles, setHorasDisponibles] = useState([]);
+  const [horasDisponibles, setHorasDisponibles] = useState(HORAS_DEL_DIA);
   const [horasOcupadas, setHorasOcupadas] = useState([]);
   const [consultando, setConsultando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -33,7 +33,14 @@ const Home = () => {
   const [cargandoDias, setCargandoDias] = useState(true);
   const [errorDias, setErrorDias] = useState('');
   const [resumenReserva, setResumenReserva] = useState(null);
-
+  const [disponibilidadCache, setDisponibilidadCache] = useState({
+    [today]: {
+      horasDisponibles: HORAS_DEL_DIA,
+      horasOcupadas: [],
+      error: ''
+    }
+  });
+  
   const cargarDisponibilidad = async (fecha) => {
     try {
       setConsultando(true);
@@ -47,6 +54,15 @@ const Home = () => {
 
       setHorasDisponibles(horasSeleccionables);
       setHorasOcupadas(horasOcupadasAPI);
+
+      setDisponibilidadCache((prev) => ({
+        ...prev,
+        [fecha]: {
+          horasDisponibles: horasSeleccionables,
+          horasOcupadas: horasOcupadasAPI,
+          error: ''
+        }
+      }));
       
       // Si la hora seleccionada ya no está disponible, seleccionar la primera disponible
       setFormData((prev) => ({
@@ -61,6 +77,14 @@ const Home = () => {
         ...prev,
         hora: HORAS_DEL_DIA.includes(prev.hora) ? prev.hora : HORAS_DEL_DIA[0]
       }));
+      setDisponibilidadCache((prev) => ({
+        ...prev,
+        [fecha]: {
+          horasDisponibles: HORAS_DEL_DIA,
+          horasOcupadas: [],
+          error: error.response?.data?.error || 'Sin datos de disponibilidad'
+        }
+      }));
     } finally {
       setConsultando(false);
     }
@@ -72,6 +96,8 @@ const Home = () => {
   }, [formData.fecha]);
 
   useEffect(() => {
+    let cancelado = false;
+    
     const cargarDisponibilidadSemanal = async () => {
       setCargandoDias(true);
       setErrorDias('');
@@ -88,35 +114,63 @@ const Home = () => {
       try {
         const resultados = await Promise.all(
           dias.map(async (dia) => {
+            const cacheDia = disponibilidadCache[dia.fechaValor];
+            if (cacheDia) {
+              return { ...dia, ...cacheDia };
+            }
+            
             try {
               const response = await reservasAPI.obtenerDisponibilidad(dia.fechaValor);
-              return {
-                ...dia,
+              const data = {
                 horasDisponibles: response.data.horasDisponibles,
                 horasOcupadas: response.data.horasOcupadas,
                 error: ''
               };
+
+              setDisponibilidadCache((prev) => ({
+                ...prev,
+                [dia.fechaValor]: data
+              }));
+
+              return { ...dia, ...data };
             } catch (error) {
-              return {
-                ...dia,
+              const data = {
                 horasDisponibles: [],
                 horasOcupadas: [],
                 error: error.response?.data?.error || 'Sin datos de disponibilidad'
               };
             }
+            
+            setDisponibilidadCache((prev) => ({
+                ...prev,
+                [dia.fechaValor]: data
+              }));
+
+              return { ...dia, ...data };
           })
         );
 
-        setDisponibilidadDias(resultados);
+        if (!cancelado) {
+          setDisponibilidadDias(resultados);
+        }
       } catch (error) {
-        setErrorDias('No pudimos cargar la disponibilidad por día.');
+        if (!cancelado) {
+          setErrorDias('No pudimos cargar la disponibilidad por día.');
+        }
       } finally {
-        setCargandoDias(false);
+        if (!cancelado) {
+          setCargandoDias(false);
+        }
       }
     };
 
-    cargarDisponibilidadSemanal();
-  }, []);
+    const timeout = setTimeout(cargarDisponibilidadSemanal, 200);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(timeout);
+    };
+  }, [disponibilidadCache]);
   
   const handleSubmit = async (e) => {
     e.preventDefault();
