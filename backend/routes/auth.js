@@ -103,8 +103,10 @@ router.post('/supabase-signup', async (req, res) => {
     const { isServiceRole, supabaseStatus } = ensureServiceRole();
 
     if (!isServiceRole) {
-      return res.status(503).json({
-        error: 'La creación de usuarios en Supabase requiere SUPABASE_SERVICE_ROLE_KEY',
+      return res.status(400).json({
+        error: 'Faltan credenciales de servicio de Supabase',
+        message:
+          'Configura SUPABASE_SERVICE_ROLE_KEY (o usa REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY en el frontend) para crear usuarios.',
         detalle: supabaseStatus
       });
     }
@@ -120,9 +122,11 @@ router.post('/supabase-signup', async (req, res) => {
 
     if (error) {
       console.error('Error al crear usuario temporal en Supabase:', error);
-      return res
-        .status(503)
-        .json({ error: 'No se pudo crear el usuario temporal en Supabase', detalle: error.message });
+      return res.status(503).json({
+        error: 'No se pudo crear el usuario temporal en Supabase',
+        message: error.message,
+        detalle: error
+      });
     }
 
     return res.status(201).json({
