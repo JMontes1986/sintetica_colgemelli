@@ -23,7 +23,8 @@ const DEFAULT_HORARIO = {
 const NEQUI_PAYMENT_NUMBER = '312 881 7505';
 const NEQUI_QR_LINK =
   process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/573128817505?text=Hola,%20quiero%20pagar%20mi%20reserva';
-
+const NEQUI_QR_IMAGE_URL =
+  'https://hfgdlgapdossqycsjzgs.supabase.co/storage/v1/object/sign/imagen/QR%20Nequi.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84OTQzMDZkYi1lNjJmLTQ1MmItYmM1ZS1mNGY4NTlmMGY5YTQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpbWFnZW4vUVIgTmVxdWkuanBnIiwiaWF0IjoxNzY1NTY5MzA4LCJleHAiOjE3OTcxMDUzMDh9.YsolxY582xMaRPVjnXzUrWX5SDWsjuqbCnpLY2uXH70';
 const parseFechaLocal = (fecha) => {
   if (!fecha) return new Date();
   return new Date(`${fecha}T00:00:00`);
@@ -334,7 +335,7 @@ const Home = () => {
                 <div className="mt-4 flex flex-col items-center gap-3 rounded-lg bg-white p-4 shadow">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(NEQUI_QR_LINK)}`}
-                    alt="QR de pago Nequi"
+                    src={NEQUI_QR_IMAGE_URL}
                     className="h-48 w-48 rounded-lg border border-gray-200 object-contain"
                   />
                   <p className="text-center text-sm text-gray-700">
