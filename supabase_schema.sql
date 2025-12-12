@@ -26,18 +26,30 @@ CREATE TABLE IF NOT EXISTS reservas (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Crear índices para mejorar consultas
+-- 3. Configuración de horarios (rangos personalizados por fecha)
+CREATE TABLE IF NOT EXISTS configuracion_horarios (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fecha_inicio DATE NOT NULL,
+  fecha_fin DATE NOT NULL,
+  hora_apertura TIME NOT NULL,
+  hora_cierre TIME NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT chk_fecha_fin_mayor CHECK (fecha_fin >= fecha_inicio),
+  CONSTRAINT chk_hora_cierre_mayor CHECK (hora_cierre > hora_apertura)
+);
+
+-- 4. Crear índices para mejorar consultas
 CREATE INDEX idx_reservas_fecha ON reservas(fecha);
 CREATE INDEX idx_reservas_estado ON reservas(estado);
 CREATE INDEX idx_reservas_fecha_hora ON reservas(fecha, hora);
 
-- 4. Crear cuentas manualmente (no se incluyen usuarios por defecto)
-  
--- 5. Habilitar Row Level Security (RLS)
+-- 5. Crear cuentas manualmente (no se incluyen usuarios por defecto)
+
+-- 6. Habilitar Row Level Security (RLS)
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reservas ENABLE ROW LEVEL SECURITY;
 
--- 6. Políticas de seguridad para usuarios
+-- 7. Políticas de seguridad para usuarios
 CREATE POLICY "Usuarios pueden ver su propio perfil"
   ON usuarios FOR SELECT
   USING (auth.uid() = id);
@@ -51,7 +63,7 @@ CREATE POLICY "Solo admins pueden ver todos los usuarios"
     )
   );
 
--- 7. Políticas de seguridad para reservas
+-- 8. Políticas de seguridad para reservas
 CREATE POLICY "Todos pueden crear reservas"
   ON reservas FOR INSERT
   WITH CHECK (true);
@@ -83,7 +95,7 @@ CREATE POLICY "Solo admins pueden eliminar reservas"
     )
   );
 
--- 8. Función para actualizar timestamp
+-- 9. Función para actualizar timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -92,10 +104,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 9. Trigger para actualizar updated_at automáticamente
+-- 9. Función para actualizar timestamp
 CREATE TRIGGER update_reservas_updated_at
   BEFORE UPDATE ON reservas
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- 10. Datos de ejemplo (se omiten para evitar usuarios o reservas predefinidos)
+-- 11. Datos de ejemplo (se omiten para evitar usuarios o reservas predefinidos)
