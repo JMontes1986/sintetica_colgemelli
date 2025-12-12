@@ -6,15 +6,20 @@ const router = express.Router();
 
 const HORA_APERTURA = 8;
 const HORA_CIERRE = 20;
+const TIMEZONE_COLOMBIA = 'America/Bogota';
+const TIMEZONE_OFFSET_COLOMBIA = '-05:00';
+
+const obtenerFechaActualColombia = () => new Date(
+  new Date().toLocaleString('en-US', { timeZone: TIMEZONE_COLOMBIA })
+);
 
 const esHorarioEnElPasado = (fecha, hora) => {
   if (!fecha || !hora) return false;
 
-  const [ano, mes, dia] = fecha.split('-').map(Number);
-  const [horaReserva, minutoReserva] = hora.split(':').map(Number);
-  const fechaReserva = new Date(ano, mes - 1, dia, horaReserva, minutoReserva || 0);
+  const fechaReserva = new Date(`${fecha}T${hora}:00${TIMEZONE_OFFSET_COLOMBIA}`);
+  const fechaActualColombia = obtenerFechaActualColombia();
 
-  return fechaReserva < new Date();
+  return fechaReserva < fechaActualColombia;
 };
 
 const normalizarHora = (hora) => {
