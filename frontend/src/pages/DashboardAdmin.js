@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { reservasAPI, estadisticasAPI } from '../services/api';
+import { reservasAPI, estadisticasAPI, configuracionAPI } from '../services/api';
 import { format } from 'date-fns';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -22,6 +22,17 @@ const DashboardAdmin = () => {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
 
+  // Configuración de horarios
+  const [horariosConfig, setHorariosConfig] = useState([]);
+  const [horarioForm, setHorarioForm] = useState({
+    fecha_inicio: format(new Date(), 'yyyy-MM-dd'),
+    fecha_fin: format(new Date(), 'yyyy-MM-dd'),
+    hora_apertura: '08:00',
+    hora_cierre: '21:00'
+  });
+  const [cargandoHorarios, setCargandoHorarios] = useState(false);
+  const [guardandoHorario, setGuardandoHorario] = useState(false);
+  
   const [formData, setFormData] = useState({
     nombre_cliente: '',
     email_cliente: '',
@@ -58,20 +69,33 @@ const DashboardAdmin = () => {
     }
   }, [filtro]);
 
+  const cargarHorarios = useCallback(async () => {
+    setCargandoHorarios(true);
+    try {
+      const response = await configuracionAPI.obtenerHorarios();
+      setHorariosConfig(response.data?.configuraciones || []);
+    } catch (error) {
+      console.error('Error al cargar horarios configurados:', error);
+      setMensaje({ tipo: 'error', texto: 'No pudimos cargar los horarios configurados.' });
+    } finally {
+      setCargandoHorarios(false);
+    }
+  }, []);
+  
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
       if (vistaActual === 'estadisticas') {
         await cargarEstadisticas();
       } else {
-        await cargarReservas();
+        await Promise.all([cargarReservas(), cargarHorarios()]);
       }
     } catch (error) {
       console.error('Error al cargar datos:', error);
     } finally {
       setLoading(false);
     }
-  }, [vistaActual, cargarEstadisticas, cargarReservas]);
+  }, [vistaActual, cargarEstadisticas, cargarReservas, cargarHorarios]);
 
   useEffect(() => {
     cargarDatos();
@@ -101,6 +125,39 @@ const DashboardAdmin = () => {
     }
   };
 
+  const guardarHorario = async (e) => {
+    e.preventDefault();
+    setGuardandoHorario(true);
+    setMensaje({ tipo: '', texto: '' });
+
+    try {
+      await configuracionAPI.crearHorario(horarioForm);
+      setMensaje({ tipo: 'success', texto: 'Horario guardado correctamente.' });
+      setHorarioForm((prev) => ({
+        ...prev,
+        fecha_inicio: format(new Date(), 'yyyy-MM-dd'),
+        fecha_fin: format(new Date(), 'yyyy-MM-dd')
+      }));
+      await cargarHorarios();
+    } catch (error) {
+      setMensaje({ tipo: 'error', texto: error.response?.data?.error || 'No pudimos guardar el horario.' });
+    } finally {
+      setGuardandoHorario(false);
+    }
+  };
+
+  const eliminarHorario = async (id) => {
+    if (!window.confirm('¿Eliminar este rango horario?')) return;
+
+    try {
+      await configuracionAPI.eliminarHorario(id);
+      setMensaje({ tipo: 'success', texto: 'Horario eliminado correctamente.' });
+      await cargarHorarios();
+    } catch (error) {
+      setMensaje({ tipo: 'error', texto: error.response?.data?.error || 'No pudimos eliminar el horario.' });
+    }
+  };
+  
   const crearReservaManual = async (e) => {
     e.preventDefault();
     try {
@@ -325,7 +382,10 @@ const DashboardAdmin = () => {
                 {mostrarFormulario ? 'Cancelar' : '+ Nueva Reserva'}
               </button>
               <button
-                onClick={cargarReservas}
+                onClick={() => {
+                  cargarReservas();
+                  cargarHorarios();
+                }}
                 className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-blue-600 transition"
               >
                 🔄 Actualizar
@@ -418,6 +478,105 @@ const DashboardAdmin = () => {
                 >
                   Jugadas
                 </button>
+              </div>
+            </div>
+
+            {/* Configuración de horarios */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow">
+                <h3 className="text-xl font-semibold mb-4">Horario de atención</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Ajusta los horarios por rango de fechas para habilitar o restringir reservas (ej. 16:00 a 21:00 en febrero).
+                </p>
+
+                <form onSubmit={guardarHorario} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Fecha inicio</label>
+                    <input
+                      type="date"
+                      required
+                      value={horarioForm.fecha_inicio}
+                      onChange={(e) => setHorarioForm({ ...horarioForm, fecha_inicio: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Fecha fin</label>
+                    <input
+                      type="date"
+                      required
+                      value={horarioForm.fecha_fin}
+                      onChange={(e) => setHorarioForm({ ...horarioForm, fecha_fin: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Hora apertura</label>
+                    <input
+                      type="time"
+                      required
+                      value={horarioForm.hora_apertura}
+                      onChange={(e) => setHorarioForm({ ...horarioForm, hora_apertura: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Hora cierre</label>
+                    <input
+                      type="time"
+                      required
+                      value={horarioForm.hora_cierre}
+                      onChange={(e) => setHorarioForm({ ...horarioForm, hora_cierre: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={guardandoHorario}
+                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600 transition disabled:bg-gray-400"
+                    >
+                      {guardandoHorario ? 'Guardando...' : 'Guardar horario'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-800">Rangos configurados</h4>
+                    <p className="text-sm text-gray-500">El más reciente aplica en caso de traslapes.</p>
+                  </div>
+                  {cargandoHorarios && <span className="text-xs text-gray-500">Actualizando...</span>}
+                </div>
+
+                {horariosConfig.length === 0 ? (
+                  <p className="text-sm text-gray-600">Aún no hay rangos personalizados.</p>
+                ) : (
+                  <ul className="space-y-2 max-h-64 overflow-y-auto">
+                    {horariosConfig.map((horario) => (
+                      <li
+                        key={horario.id}
+                        className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                      >
+                        <div>
+                          <p className="font-semibold text-gray-800">
+                            {horario.fecha_inicio} → {horario.fecha_fin}
+                          </p>
+                          <p className="text-gray-600">{horario.hora_apertura} - {horario.hora_cierre}</p>
+                        </div>
+                        <button
+                          onClick={() => eliminarHorario(horario.id)}
+                          className="text-red-600 hover:text-red-700 text-xs font-semibold"
+                        >
+                          Eliminar
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
 
