@@ -7,6 +7,16 @@ const { getJwtSecret } = require('../utils/env');
 
 const router = express.Router();
 
+const ensureServiceRole = () => {
+  const supabaseStatus = getSupabase.getStatus?.();
+  const isServiceRole = supabaseStatus?.keyType === 'service_role';
+
+  return {
+    isServiceRole,
+    supabaseStatus
+  };
+};
+
 // Login
 router.post('/login', async (req, res) => {
   try {
@@ -79,6 +89,53 @@ router.get('/verificar', verificarToken, (req, res) => {
       rol: req.usuario.rol
     }
   });
+});
+
+// Crear usuario temporal en Supabase Auth
+router.post('/supabase-signup', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Correo y contraseña requeridos' });
+    }
+
+    const { isServiceRole, supabaseStatus } = ensureServiceRole();
+
+    if (!isServiceRole) {
+      return res.status(503).json({
+        error: 'La creación de usuarios en Supabase requiere SUPABASE_SERVICE_ROLE_KEY',
+        detalle: supabaseStatus
+      });
+    }
+
+    const supabase = getSupabase();
+
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: false,
+      user_metadata: { origen: 'registro_temporal_frontend' }
+    });
+
+    if (error) {
+      console.error('Error al crear usuario temporal en Supabase:', error);
+      return res
+        .status(503)
+        .json({ error: 'No se pudo crear el usuario temporal en Supabase', detalle: error.message });
+    }
+
+    return res.status(201).json({
+      message: 'Usuario temporal creado en Supabase',
+      user: data.user
+    });
+  } catch (error) {
+    console.error('Error inesperado al crear usuario temporal:', error);
+    if (error.code === 'SUPABASE_CONFIG_MISSING') {
+      return res.status(503).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Error al crear usuario temporal en Supabase' });
+  }
 });
 
 // Registro (solo para testing, en producción controlar mejor)
