@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const logger = require('./middleware/logger');
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
@@ -92,6 +93,7 @@ const corsOptions = {
 // Middlewares
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(logger);
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/reservas/crear', reservasLimiter);
 
