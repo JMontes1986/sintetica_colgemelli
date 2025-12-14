@@ -12,6 +12,7 @@ const TIMEZONE_OFFSET_COLOMBIA = '-05:00';
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^\d{2}:\d{2}$/;
 const ESTADOS_VALIDOS = ['Pendiente', 'Jugado'];
+const MAX_HORAS_CONSECUTIVAS = 3;
 
 const obtenerFechaActualColombia = () => new Date(
   new Date().toLocaleString('en-US', { timeZone: TIMEZONE_COLOMBIA })
@@ -56,6 +57,22 @@ const buildHorariosDisponibles = (horaApertura = HORA_APERTURA, horaCierre = HOR
 };
 
 const sanitizarTexto = (valor) => (typeof valor === 'string' ? xss(valor) : valor);
+
+const ordenarHorasPorHorario = (horas, horario) =>
+  horas.slice().sort((a, b) => horario.indexOf(a) - horario.indexOf(b));
+
+const sonHorasConsecutivas = (horas, horario) => {
+  if (horas.length <= 1) return true;
+
+  const horasOrdenadas = ordenarHorasPorHorario(horas, horario);
+
+  for (let i = 1; i < horasOrdenadas.length; i++) {
+    const diferencia = horario.indexOf(horasOrdenadas[i]) - horario.indexOf(horasOrdenadas[i - 1]);
+    if (diferencia !== 1) return false;
+  }
+
+  return true;
+};
 
 const obtenerHorarioPorFecha = async (supabase, fecha) => {
   const horarioPorDefecto = {
@@ -118,7 +135,12 @@ router.post('/crear', async (req, res) => {
     const email_cliente = sanitizarTexto(req.body?.email_cliente);
     const celular_cliente = sanitizarTexto(req.body?.celular_cliente);
     const fecha = sanitizarTexto(req.body?.fecha);
-    const hora = sanitizarTexto(req.body?.hora);
+
+    const horasSolicitadas = Array.isArray(req.body?.horas)
+      ? req.body.horas
+      : req.body?.hora
+        ? [req.body.hora]
+        : [];
 
     // Validaciones
     if (!nombre_cliente || nombre_cliente.length < 3 || nombre_cliente.length > 100) {
@@ -145,59 +167,74 @@ router.post('/crear', async (req, res) => {
       return res.status(400).json({ error: 'Fecha inválida' });
     }
 
-    if (fechaReserva < hoy) {
-      return res.status(400).json({ error: 'No se pueden hacer reservas en fechas pasadas' });
+    if (!horasSolicitadas.length) {
+      return res.status(400).json({ error: 'Debes seleccionar al menos un horario' });
+    }
+
+    if (horasSolicitadas.length > MAX_HORAS_CONSECUTIVAS) {
+      return res
+        .status(400)
+        .json({ error: `Puedes reservar hasta ${MAX_HORAS_CONSECUTIVAS} horas consecutivas` });
     }
 
     if (!esHoraValida(hora)) {
       return res.status(400).json({ error: 'Hora es requerida y debe tener formato HH:mm' });
     }
 
-    const horaNormalizada = normalizarHora(hora);
+    const horasNormalizadas = [...new Set(horasSolicitadas.map(normalizarHora))];
 
-    if (esHorarioEnElPasado(fecha, horaNormalizada)) {
-      return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
+    if (!horasNormalizadas.every(esHoraValida)) {
+      return res.status(400).json({ error: 'Todas las horas deben tener formato HH:mm' });
     }
     
-    // Verificar si ya existe reserva en esa fecha y hora
     const horarioDelDia = await obtenerHorarioPorFecha(supabase, fecha);
 
-    if (!horarioDelDia.horas.includes(horaNormalizada)) {
-      return res.status(400).json({ error: 'La cancha no está habilitada para ese horario.' });
+    if (!horasNormalizadas.every((hora) => horarioDelDia.horas.includes(hora))) {
+      return res.status(400).json({ error: 'La cancha no está habilitada para uno de los horarios seleccionados.' });
     }
     
-    const { data: existente, error: errorReservaExistente } = await supabase
+    const horasOrdenadas = ordenarHorasPorHorario(horasNormalizadas, horarioDelDia.horas);
+
+    if (!sonHorasConsecutivas(horasOrdenadas, horarioDelDia.horas)) {
+      return res.status(400).json({ error: 'Las horas seleccionadas deben ser consecutivas.' });
+    }
+
+    if (horasOrdenadas.some((horaSeleccionada) => esHorarioEnElPasado(fecha, horaSeleccionada))) {
+      return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
+    }
+
+    const { data: reservasOcupadas, error: errorReservaExistente } = await supabase
       .from('reservas')
-      .select('*')
+      .select('hora')
       .eq('fecha', fecha)
-      .eq('hora', horaNormalizada)
-      .maybeSingle();
+      ..in('hora', horasOrdenadas);
 
     if (errorReservaExistente) throw errorReservaExistente;
 
-    if (existente) {
-      return res.status(400).json({ error: 'Ya existe una reserva para esa fecha y hora' });
+    if (reservasOcupadas?.length) {
+      const horasOcupadas = reservasOcupadas.map((reserva) => normalizarHora(reserva.hora));
+      return res
+        .status(400)
+        .json({ error: `Ya existe una reserva para: ${horasOcupadas.join(', ')}` });
     }
 
-    // Crear reserva
-    const { data, error } = await supabase
-      .from('reservas')
-      .insert([{
-        nombre_cliente,
-        email_cliente,
-        celular_cliente,
-        fecha,
-        hora: horaNormalizada,
-        estado: 'Pendiente'
-      }])
-      .select()
-      .single();
+    // Crear reservas múltiples (una por cada hora seleccionada)
+    const reservasParaInsertar = horasOrdenadas.map((horaSeleccionada) => ({
+      nombre_cliente,
+      email_cliente,
+      celular_cliente,
+      fecha,
+      hora: horaSeleccionada,
+      estado: 'Pendiente'
+    }));
+
+    const { data, error } = await supabase.from('reservas').insert(reservasParaInsertar).select();
 
     if (error) throw error;
 
     res.status(201).json({
       message: 'Reserva creada exitosamente',
-      reserva: formatearReserva(data)
+      reservas: (data || []).map(formatearReserva)
     });
   } catch (error) {
     return handleSupabaseError(res, error, 'Error al crear la reserva', 'Error al crear reserva:');
@@ -248,9 +285,14 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
     const email_cliente = sanitizarTexto(req.body?.email_cliente);
     const celular_cliente = sanitizarTexto(req.body?.celular_cliente);
     const fecha = sanitizarTexto(req.body?.fecha);
-    const hora = sanitizarTexto(req.body?.hora);
 
-    if (!nombre_cliente || !email_cliente || !celular_cliente || !fecha || !hora) {
+    const horasSolicitadas = Array.isArray(req.body?.horas)
+      ? req.body.horas
+      : req.body?.hora
+        ? [req.body.hora]
+        : [];
+
+    if (!nombre_cliente || !email_cliente || !celular_cliente || !fecha || horasSolicitadas.length === 0) {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
@@ -258,55 +300,65 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       return res.status(400).json({ error: 'Fecha inválida. Usa formato YYYY-MM-DD.' });
     }
 
-    if (!esHoraValida(hora)) {
-      return res.status(400).json({ error: 'Hora inválida. Usa formato HH:mm.' });
+    if (horasSolicitadas.length > MAX_HORAS_CONSECUTIVAS) {
+      return res
+        .status(400)
+        .json({ error: `Puedes reservar hasta ${MAX_HORAS_CONSECUTIVAS} horas consecutivas` });
     }
-    
-    const horaNormalizada = normalizarHora(hora);
 
-    if (esHorarioEnElPasado(fecha, horaNormalizada)) {
-      return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
+    const horasNormalizadas = [...new Set(horasSolicitadas.map(normalizarHora))];
+
+    if (!horasNormalizadas.every(esHoraValida)) {
+      return res.status(400).json({ error: 'Hora inválida. Usa formato HH:mm.' });
     }
     
     const horarioDelDia = await obtenerHorarioPorFecha(supabase, fecha);
 
-    if (!horarioDelDia.horas.includes(horaNormalizada)) {
+    if (!horasNormalizadas.every((hora) => horarioDelDia.horas.includes(hora))) {
       return res.status(400).json({ error: 'La cancha no está habilitada para ese horario.' });
+    }
+
+    const horasOrdenadas = ordenarHorasPorHorario(horasNormalizadas, horarioDelDia.horas);
+
+    if (!sonHorasConsecutivas(horasOrdenadas, horarioDelDia.horas)) {
+      return res.status(400).json({ error: 'Las horas seleccionadas deben ser consecutivas.' });
+    }
+
+    if (horasOrdenadas.some((horaSeleccionada) => esHorarioEnElPasado(fecha, horaSeleccionada))) {
+      return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
     }
     
     // Verificar disponibilidad
-    const { data: existente, error: errorReservaExistente } = await supabase
+    const { data: existentes, error: errorReservaExistente } = await supabase
       .from('reservas')
-      .select('*')
-      .eq('fecha', fecha)
-      .eq('hora', horaNormalizada)
+      .select('hora')
+      .in('hora', horasOrdenadas);
       .maybeSingle();
 
     if (errorReservaExistente) throw errorReservaExistente;
 
-    if (existente) {
-      return res.status(400).json({ error: 'Ya existe una reserva para esa fecha y hora' });
+    if (existentes?.length) {
+      const horasOcupadas = existentes.map((reserva) => normalizarHora(reserva.hora));
+      return res.status(400).json({ error: `Ya existe una reserva para: ${horasOcupadas.join(', ')}` });
     }
 
-    const { data, error } = await supabase
-      .from('reservas')
-      .insert([{
-        nombre_cliente,
-        email_cliente,
-        celular_cliente,
-        fecha,
-        hora: horaNormalizada,
-        estado: 'Pendiente',
-        creado_por: req.usuario.id
-      }])
-      .select()
-      .single();
+    const reservasParaInsertar = horasOrdenadas.map((horaSeleccionada) => ({
+      nombre_cliente,
+      email_cliente,
+      celular_cliente,
+      fecha,
+      hora: horaSeleccionada,
+      estado: 'Pendiente',
+      creado_por: req.usuario.id
+    }));
 
+    const { data, error } = await supabase.from('reservas').insert(reservasParaInsertar).select();
+    
     if (error) throw error;
 
     res.status(201).json({
       message: 'Reserva creada exitosamente',
-      reserva: formatearReserva(data)
+      reservas: (data || []).map(formatearReserva)
     });
   } catch (error) {
     return handleSupabaseError(res, error, 'Error al crear la reserva', 'Error al crear reserva manual:');
