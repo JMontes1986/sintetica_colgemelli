@@ -194,19 +194,19 @@ const Home = () => {
     }
 
     const prepararYGuardar = (datosRespuesta, error = '') => {
-      const datosDisponibilidad = prepararDatosDisponibilidad(fecha, datosRespuesta);
+      const datosDisponibilidadPreparados = prepararDatosDisponibilidad(fecha, datosRespuesta);
   
     setDisponibilidadCache((prev) => ({
         ...prev,
         [fecha]: {
-          horasDisponibles: datosDisponibilidad.horasSeleccionables,
-          horasOcupadas: datosDisponibilidad.horasOcupadasAPI,
-          horario: datosDisponibilidad.horario,
-          error: ''
+          horasDisponibles: datosDisponibilidadPreparados.horasSeleccionables,
+          horasOcupadas: datosDisponibilidadPreparados.horasOcupadasAPI,
+          horario: datosDisponibilidadPreparados.horario,
+          error
         }
       }));
       
-    aplicarDisponibilidad(datosDisponibilidad);
+    aplicarDisponibilidad(datosDisponibilidadPreparados);
     };
 
     try {
