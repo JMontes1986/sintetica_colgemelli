@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
@@ -11,6 +12,19 @@ const healthRoutes = require('./routes/health');
 const configuracionRoutes = require('./routes/configuracion');
 
 const app = express();
+
+// Configurar cabeceras de seguridad
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:']
+    }
+  },
+  crossOriginEmbedderPolicy: false
+}));
 
 // Rate limiting
 const loginLimiter = rateLimit({
