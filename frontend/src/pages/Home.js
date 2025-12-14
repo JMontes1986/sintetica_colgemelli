@@ -48,6 +48,31 @@ const formatearRangoHoras = (horas = []) => {
   return `${horas[0]} - ${horas[horas.length - 1]}`;
 };
 
+const esFinDeSemana = (fecha) => {
+  const fechaBase = parseFechaLocal(fecha);
+  const diaSemana = fechaBase.getDay();
+  return diaSemana === 0 || diaSemana === 6;
+};
+
+const obtenerTarifaPorHora = (hora, fecha) => {
+  const horaEntera = parseInt(hora?.slice(0, 2), 10);
+
+  if (Number.isNaN(horaEntera)) return 0;
+
+  if (esFinDeSemana(fecha)) return 130000;
+
+  return horaEntera >= 17 ? 130000 : 100000;
+};
+
+const calcularTotalReserva = (horas = [], fecha) =>
+  (horas || []).reduce((total, hora) => total + obtenerTarifaPorHora(hora, fecha), 0);
+
+const formatearCOP = new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  maximumFractionDigits: 0
+});
+
 const obtenerHoraInicialDisponible = (duracion, horario = [], horasLibres = []) => {
   if (!duracion || duracion < 1) return '';
 
@@ -97,6 +122,11 @@ const Home = () => {
     horarioDelDia.horas
   );
 
+  const totalReserva = calcularTotalReserva(horasSeleccionadas, formData.fecha);
+  const horasParaPago = resumenReserva?.horas || horasSeleccionadas;
+  const fechaParaPago = resumenReserva?.fecha || formData.fecha;
+  const totalResumenReserva = calcularTotalReserva(horasParaPago, fechaParaPago);
+  
   useEffect(() => {
     const horaSugerida = obtenerHoraInicialDisponible(formData.duracion, horarioDelDia.horas, horasDisponibles);
 
@@ -425,6 +455,26 @@ const Home = () => {
                     <p className="text-base font-bold text-gray-800">Nequi • Número {NEQUI_PAYMENT_NUMBER}</p>
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-primary shadow">Prioritario</span>
+                </div>
+                <div className="mt-4 rounded-lg bg-white p-4 shadow">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase text-gray-500">Total a pagar</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {horasParaPago.length ? formatearCOP.format(totalResumenReserva) : 'Selecciona horario'}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {horasParaPago.length
+                          ? `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} calculadas automáticamente según la tarifa vigente.`
+                          : 'Calcularemos el total cuando confirmes tu horario.'}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-gray-600">
+                      <p>Lunes a viernes 8:00 a 16:00: $100.000/h</p>
+                      <p>Lunes a viernes 17:00 a 21:00: $130.000/h</p>
+                      <p>Fines de semana y festivos: $130.000/h</p>
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-4 flex flex-col items-center gap-3 rounded-lg bg-white p-4 shadow">
                   <img
