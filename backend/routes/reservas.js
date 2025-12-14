@@ -239,7 +239,7 @@ router.post('/crear', async (req, res) => {
 });
 
 // Obtener todas las reservas (requiere autenticación)
-router.get('/', verificarToken, async (req, res) => {
+router.get('/', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
   try {
     const supabase = getSupabase();
     const { fecha, estado } = req.query;
@@ -442,7 +442,7 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
 });
 
 // Obtener reserva por ID
-router.get('/:id', verificarToken, async (req, res) => {
+router.get('/:id', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
   try {
     const supabase = getSupabase();
     const { id } = req.params;
