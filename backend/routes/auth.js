@@ -7,6 +7,10 @@ const { getJwtSecret } = require('../utils/env');
 
 const router = express.Router();
 
+const isEmailValido = (valor) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor || '');
+const isPasswordFuerte = (valor) => typeof valor === 'string' && valor.length >= 8;
+const ROLES_PERMITIDOS = ['admin', 'cancha', 'publico'];
+
 const ensureServiceRole = () => {
   const supabaseStatus = getSupabase.getStatus?.();
   const isServiceRole = supabaseStatus?.keyType === 'service_role';
@@ -32,10 +36,11 @@ router.post('/login', async (req, res) => {
     }
     
     const supabase = getSupabase();
-    const { email, password } = req.body;
+    const email = req.body?.email?.toString().trim();
+    const password = req.body?.password;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email y contraseña requeridos' });
+    if (!isEmailValido(email) || !isPasswordFuerte(password)) {
+      return res.status(400).json({ error: 'Email o contraseña inválidos' });
     }
 
     // Buscar usuario
@@ -75,11 +80,9 @@ router.post('/login', async (req, res) => {
     }
 
     // Generar token
-    const token = jwt.sign(
-      { userId: usuario.id, email: usuario.email, rol: usuario.rol },
-      getJwtSecret(),
-      { expiresIn: '24h' }
-    );
+    const token = jwt.sign({ userId: usuario.id, email: usuario.email, rol: usuario.rol }, getJwtSecret(), {
+      expiresIn: '2h'
+    });
 
     res.json({
       token,
@@ -92,7 +95,11 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Error en login:', error);
-    if (error.code === 'SUPABASE_CONFIG_MISSING' || error.code === 'JWT_SECRET_MISSING') {
+    if (
+      error.code === 'SUPABASE_CONFIG_MISSING' ||
+      error.code === 'JWT_SECRET_MISSING' ||
+      error.code === 'JWT_SECRET_WEAK'
+    ) {
       return res.status(503).json({ error: error.message });
     }
     res.status(500).json({ error: 'Error al iniciar sesión' });
@@ -114,10 +121,11 @@ router.get('/verificar', verificarToken, (req, res) => {
 // Crear usuario temporal en Supabase Auth
 router.post('/supabase-signup', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body?.email?.toString().trim();
+    const password = req.body?.password;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Correo y contraseña requeridos' });
+    if (!isEmailValido(email) || !isPasswordFuerte(password)) {
+      return res.status(400).json({ error: 'Correo o contraseña inválidos' });
     }
 
     const { isServiceRole, supabaseStatus } = ensureServiceRole();
@@ -166,13 +174,23 @@ router.post('/supabase-signup', async (req, res) => {
 router.post('/registro', async (req, res) => {
   try {
     const supabase = getSupabase();
-    const { email, nombre, password, rol = 'publico' } = req.body;
-
+    const email = req.body?.email?.toString().trim();
+    const nombre = req.body?.nombre?.toString().trim();
+    const password = req.body?.password;
+    const rol = ROLES_PERMITIDOS.includes(req.body?.rol) ? req.body.rol : 'publico';
     if (!email || !nombre || !password) {
       return res.status(400).json({ error: 'Datos incompletos' });
     }
 
     // Hash de contraseña
+    if (!isEmailValido(email)) {
+      return res.status(400).json({ error: 'Email inválido' });
+    }
+
+    if (!isPasswordFuerte(password)) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+    
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Crear usuario
