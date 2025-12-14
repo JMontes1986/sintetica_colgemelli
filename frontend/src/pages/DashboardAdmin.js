@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { reservasAPI, estadisticasAPI, configuracionAPI } from '../services/api';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const DashboardAdmin = () => {
