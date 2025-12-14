@@ -2,6 +2,7 @@ const express = require('express');
 const getSupabase = require('../config/supabase');
 const { verificarToken, verificarRol } = require('../middleware/auth');
 const xss = require('xss');
+const validator = require('validator');
 
 const router = express.Router();
 
@@ -57,7 +58,18 @@ const buildHorariosDisponibles = (horaApertura = HORA_APERTURA, horaCierre = HOR
   return horarios;
 };
 
-const sanitizarTexto = (valor) => (typeof valor === 'string' ? xss(valor) : valor);
+const sanitizarTexto = (valor) => {
+  if (typeof valor !== 'string') return '';
+  return xss(validator.trim(valor));
+};
+
+const sanitizarEmail = (valor) => {
+  if (typeof valor !== 'string') return '';
+  const normalizado = validator.normalizeEmail(valor, { gmail_remove_dots: false });
+  return normalizado ? xss(normalizado) : '';
+};
+
+const sanitizarHora = (valor) => sanitizarTexto(valor).slice(0, 5);
 
 const ordenarHorasPorHorario = (horas, horario) =>
   horas.slice().sort((a, b) => horario.indexOf(a) - horario.indexOf(b));
@@ -132,15 +144,17 @@ const handleSupabaseError = (res, error, defaultMessage, logContext) => {
 router.post('/crear', async (req, res) => {
   try {
     const supabase = getSupabase();
-    const nombre_cliente = sanitizarTexto(req.body?.nombre_cliente);
-    const email_cliente = sanitizarTexto(req.body?.email_cliente);
-    const celular_cliente = sanitizarTexto(req.body?.celular_cliente);
-    const fecha = sanitizarTexto(req.body?.fecha);
+    let { nombre_cliente, email_cliente, celular_cliente, fecha } = req.body;
+
+    nombre_cliente = sanitizarTexto(nombre_cliente);
+    email_cliente = sanitizarEmail(email_cliente);
+    celular_cliente = sanitizarTexto(celular_cliente);
+    fecha = sanitizarTexto(fecha);
 
     const horasSolicitadas = Array.isArray(req.body?.horas)
-      ? req.body.horas
+      ? req.body.horas.map(sanitizarHora)
       : req.body?.hora
-        ? [req.body.hora]
+        ? [sanitizarHora(req.body.hora)]
         : [];
 
     // Validaciones
@@ -148,12 +162,12 @@ router.post('/crear', async (req, res) => {
       return res.status(400).json({ error: 'Nombre inválido' });
     }
 
-    if (!celular_cliente || !/^\d{10}$/.test(celular_cliente)) {
-      return res.status(400).json({ error: 'Teléfono debe tener 10 dígitos' });
+    if (!validator.isEmail(email_cliente)) {
+      return res.status(400).json({ error: 'Email inválido' });
     }
 
-    if (!email_cliente || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email_cliente)) {
-      return res.status(400).json({ error: 'Email inválido' });
+    if (!validator.isMobilePhone(celular_cliente, 'es-CO')) {
+      return res.status(400).json({ error: 'Teléfono inválido' });
     }
 
     if (!esFechaValida(fecha)) {
@@ -168,6 +182,10 @@ router.post('/crear', async (req, res) => {
       return res.status(400).json({ error: 'Fecha inválida' });
     }
 
+    if (fechaReserva < hoy) {
+      return res.status(400).json({ error: 'No se pueden hacer reservas en fechas pasadas' });
+    }
+    
     if (!horasSolicitadas.length) {
       return res.status(400).json({ error: 'Debes seleccionar al menos un horario' });
     }
@@ -180,8 +198,8 @@ router.post('/crear', async (req, res) => {
 
     const horasNormalizadas = [...new Set(horasSolicitadas.map(normalizarHora))];
 
-    if (!horasNormalizadas.every(esHoraValida)) {
-      return res.status(400).json({ error: 'Todas las horas deben tener formato HH:mm' });
+    if (!horasNormalizadas.every((hora) => /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(hora))) {
+      return res.status(400).json({ error: 'Formato de hora inválido' });
     }
     
     const horarioDelDia = await obtenerHorarioPorFecha(supabase, fecha);
