@@ -2,11 +2,13 @@ const logger = (req, res, next) => {
   const timestamp = new Date().toISOString();
   const ip = req.ip || req.connection?.remoteAddress || 'IP no disponible';
 
-  console.log(`[${timestamp}] ${req.method} ${req.originalUrl} - IP: ${ip}`);
+  const safeEmail = typeof req.body?.email === 'string' ? req.body.email : undefined;
+  const userTag = req.usuario?.id ? ` user=${req.usuario.id}` : '';
 
-  if (req.path?.includes('/login')) {
-    const email = req.body?.email || 'Email no proporcionado';
-    console.log(`[LOGIN ATTEMPT] Email: ${email} - IP: ${ip}`);
+  console.log(`[${timestamp}] ${req.method} ${req.originalUrl} - IP: ${ip}${userTag}`);
+
+  if (req.path?.includes('/login') && safeEmail) {
+    console.log(`[LOGIN ATTEMPT] Email: ${safeEmail} - IP: ${ip}`);
   }
 
   next();
