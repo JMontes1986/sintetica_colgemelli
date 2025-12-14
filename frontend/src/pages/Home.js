@@ -192,12 +192,14 @@ const Home = () => {
       aplicarDisponibilidad(prepararDatosDisponibilidad(fecha, cacheDia));
       return;
     }
+
+    let datosDisponibilidadPreparados;
     
-    try {
       setConsultando(true);
       const response = await reservasAPI.obtenerDisponibilidad(fecha);
       const datosDisponibilidad = prepararDatosDisponibilidad(fecha, response.data);
-
+      datosDisponibilidadPreparados = prepararDatosDisponibilidad(fecha, response.data);
+    
       setDisponibilidadCache((prev) => ({
         ...prev,
         [fecha]: {
@@ -207,14 +209,13 @@ const Home = () => {
           error: ''
         }
       }));
-      
-      aplicarDisponibilidad(datosDisponibilidad);
     } catch (error) {
-      const datosDisponibilidad = prepararDatosDisponibilidad(fecha, {
+      datosDisponibilidadPreparados = prepararDatosDisponibilidad(fecha, {
         horasDisponibles: DEFAULT_HORARIO.horas,
         horasOcupadas: [],
         horario: DEFAULT_HORARIO
       });
+    
       setDisponibilidadCache((prev) => ({
         ...prev,
         [fecha]: {
@@ -225,7 +226,6 @@ const Home = () => {
         }
       }));
     } finally {
-      
       aplicarDisponibilidad(datosDisponibilidad);
       setConsultando(false);
     }
