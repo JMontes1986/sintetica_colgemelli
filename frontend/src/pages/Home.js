@@ -456,7 +456,7 @@ const Home = () => {
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-primary shadow">Prioritario</span>
                 </div>
                 <div className="mt-4 rounded-lg bg-white p-4 shadow">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
                     <div>
                       <p className="text-xs uppercase text-gray-500">Total a pagar</p>
                       <p className="text-2xl font-bold text-primary">
@@ -467,11 +467,6 @@ const Home = () => {
                           ? `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} calculadas automáticamente según la tarifa vigente.`
                           : 'Calcularemos el total cuando confirmes tu horario.'}
                       </p>
-                    </div>
-                    <div className="text-right text-xs text-gray-600">
-                      <p>Lunes a viernes 8:00 a 16:00: $100.000/h</p>
-                      <p>Lunes a viernes 17:00 a 21:00: $130.000/h</p>
-                      <p>Fines de semana y festivos: $130.000/h</p>
                     </div>
                   </div>
                 </div>
