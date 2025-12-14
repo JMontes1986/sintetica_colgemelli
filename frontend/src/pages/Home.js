@@ -122,7 +122,6 @@ const Home = () => {
     horarioDelDia.horas
   );
 
-  const totalReserva = calcularTotalReserva(horasSeleccionadas, formData.fecha);
   const horasParaPago = resumenReserva?.horas || horasSeleccionadas;
   const fechaParaPago = resumenReserva?.fecha || formData.fecha;
   const totalResumenReserva = calcularTotalReserva(horasParaPago, fechaParaPago);
