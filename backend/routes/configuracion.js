@@ -4,6 +4,8 @@ const { verificarToken, verificarRol } = require('../middleware/auth');
 
 const router = express.Router();
 
+const esIdValido = (valor) => /^\d+$/.test(String(valor));
+
 const parseHora = (valor) => {
   if (!valor) return null;
   const [hora] = valor.split(':');
@@ -81,6 +83,10 @@ router.delete('/horarios/:id', verificarToken, verificarRol('admin'), async (req
     const supabase = getSupabase();
     const { id } = req.params;
 
+    if (!esIdValido(id)) {
+      return res.status(400).json({ error: 'Identificador inválido' });
+    }
+    
     const { error } = await supabase.from('configuracion_horarios').delete().eq('id', id);
 
     if (error) throw error;
