@@ -64,6 +64,82 @@ const obtenerTarifaPorHora = (hora, fecha) => {
   return horaEntera >= 17 ? 130000 : 100000;
 };
 
+const moverALunesSiguiente = (fecha) => {
+  const diaSemana = fecha.getDay();
+  const diasHastaLunes = diaSemana === 1 ? 0 : (8 - diaSemana) % 7;
+  const fechaLunes = new Date(fecha);
+  fechaLunes.setDate(fechaLunes.getDate() + diasHastaLunes);
+  return fechaLunes;
+};
+
+const calcularPascua = (year) => {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+  const dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, mes, dia);
+};
+
+const formatearFechaISO = (fecha) => format(fecha, 'yyyy-MM-dd');
+
+const obtenerFestivosColombia = (year) => {
+  const pascua = calcularPascua(year);
+
+  const festivosFijos = [
+    new Date(year, 0, 1),
+    new Date(year, 4, 1),
+    new Date(year, 6, 20),
+    new Date(year, 7, 7),
+    new Date(year, 11, 8),
+    new Date(year, 11, 25)
+  ];
+
+  const festivosEmiliani = [
+    new Date(year, 0, 6),
+    new Date(year, 2, 19),
+    new Date(year, 5, 29),
+    new Date(year, 7, 15),
+    new Date(year, 9, 12),
+    new Date(year, 10, 1),
+    new Date(year, 10, 11)
+  ].map(moverALunesSiguiente);
+
+  const festivosSemanaSanta = [
+    new Date(pascua.getTime() - 3 * 24 * 60 * 60 * 1000),
+    new Date(pascua.getTime() - 2 * 24 * 60 * 60 * 1000)
+  ];
+
+  const festivosMoviles = [
+    moverALunesSiguiente(new Date(pascua.getTime() + 43 * 24 * 60 * 60 * 1000)),
+    moverALunesSiguiente(new Date(pascua.getTime() + 64 * 24 * 60 * 60 * 1000)),
+    moverALunesSiguiente(new Date(pascua.getTime() + 71 * 24 * 60 * 60 * 1000))
+  ];
+
+  return new Set([
+    ...festivosFijos,
+    ...festivosEmiliani,
+    ...festivosSemanaSanta,
+    ...festivosMoviles
+  ].map(formatearFechaISO));
+};
+
+const esFestivoColombia = (fechaISO) => {
+  if (!fechaISO) return false;
+  const fecha = parseFechaLocal(fechaISO);
+  const festivos = obtenerFestivosColombia(fecha.getFullYear());
+  return festivos.has(fechaISO);
+};
+
 const calcularTotalReserva = (horas = [], fecha) =>
   (horas || []).reduce((total, hora) => total + obtenerTarifaPorHora(hora, fecha), 0);
 
@@ -125,6 +201,7 @@ const Home = () => {
   const horasParaPago = resumenReserva?.horas || horasSeleccionadas;
   const fechaParaPago = resumenReserva?.fecha || formData.fecha;
   const totalResumenReserva = calcularTotalReserva(horasParaPago, fechaParaPago);
+  const esDiaFestivoSeleccionado = esFestivoColombia(formData.fecha);
   
   useEffect(() => {
     const horaSugerida = obtenerHoraInicialDisponible(formData.duracion, horarioDelDia.horas, horasDisponibles);
@@ -679,6 +756,12 @@ const Home = () => {
                 <h3 className="text-xl font-semibold text-gray-800">
                   {format(parseFechaLocal(formData.fecha), "EEEE d 'de' MMMM", { locale: es })}
                 </h3>
+                {esDiaFestivoSeleccionado && (
+                  <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">
+                    <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                    Festivo en Colombia
+                  </span>
+                )}
               </div>
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
                 Abierto {horarioDelDia.horaApertura} - {horarioDelDia.horaCierre}
@@ -775,27 +858,39 @@ const Home = () => {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {disponibilidadDias.map((dia) => (
-                <div key={dia.fechaValor} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                <div
+                  key={dia.fechaValor}
+                  className={`rounded-xl border shadow-sm p-4 ${
+                    esFestivoColombia(dia.fechaValor) ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
+                  }`}
+                >
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="text-xs uppercase text-gray-500">{dia.fechaValor}</p>
                       <p className="text-lg font-semibold text-gray-800">{dia.etiqueta}</p>
                     </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        dia.error
-                          ? 'bg-red-100 text-red-700'
+                    <div className="flex items-center gap-2">
+                      {esFestivoColombia(dia.fechaValor) && (
+                        <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">
+                          Festivo
+                        </span>
+                      )}
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          dia.error
+                            ? 'bg-red-100 text-red-700'
+                            : dia.horasDisponibles.length > 0
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {dia.error
+                          ? 'Sin reservas'
                           : dia.horasDisponibles.length > 0
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {dia.error
-                        ? 'Sin reservas'
-                        : dia.horasDisponibles.length > 0
-                          ? `${dia.horasDisponibles.length} horarios libres`
-                          : 'Sin reservas'}
-                    </span>
+                            ? `${dia.horasDisponibles.length} horarios libres`
+                            : 'Sin reservas'}
+                      </span>
+                    </div>
                   </div>
 
                   {dia.error ? (
