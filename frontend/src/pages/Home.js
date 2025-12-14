@@ -486,7 +486,7 @@ const Home = () => {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow hover:bg-green-600"
                   >
-                    Abrir enlace de pago
+                    Habla con nosotros
                   </a>
                 </div>
               </div>
