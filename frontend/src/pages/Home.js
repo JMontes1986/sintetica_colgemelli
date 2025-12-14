@@ -193,14 +193,10 @@ const Home = () => {
       return;
     }
 
-    let datosDisponibilidadPreparados;
-    
-    try {
-      setConsultando(true);
-      const response = await reservasAPI.obtenerDisponibilidad(fecha);
-      datosDisponibilidadPreparados = prepararDatosDisponibilidad(fecha, response.data);
-    
-      setDisponibilidadCache((prev) => ({
+    const prepararYGuardar = (datosRespuesta, error = '') => {
+      const datosDisponibilidad = prepararDatosDisponibilidad(fecha, datosRespuesta);
+  
+    setDisponibilidadCache((prev) => ({
         ...prev,
         [fecha]: {
           horasDisponibles: datosDisponibilidad.horasSeleccionables,
@@ -209,22 +205,23 @@ const Home = () => {
           error: ''
         }
       }));
+      
+    aplicarDisponibilidad(datosDisponibilidad);
+    };
+
+    try {
+      setConsultando(true);
+      const response = await reservasAPI.obtenerDisponibilidad(fecha);
+      prepararYGuardar(response.data);
     } catch (error) {
-      datosDisponibilidadPreparados = prepararDatosDisponibilidad(fecha, {
+      prepararYGuardar(
+        {
         horasDisponibles: DEFAULT_HORARIO.horas,
         horasOcupadas: [],
         horario: DEFAULT_HORARIO
-      });
-    
-      setDisponibilidadCache((prev) => ({
-        ...prev,
-        [fecha]: {
-          horasDisponibles: datosDisponibilidad.horasSeleccionables,
-          horasOcupadas: datosDisponibilidad.horasOcupadasAPI,
-          horario: datosDisponibilidad.horario,
-          error: error.response?.data?.error || 'Sin datos de disponibilidad'
-        }
-      }));
+        },
+        error.response?.data?.error || 'Sin datos de disponibilidad'
+      );
     } finally {
       if (datosDisponibilidadPreparados) {
         aplicarDisponibilidad(datosDisponibilidadPreparados);
