@@ -20,6 +20,8 @@ const DEFAULT_HORARIO = {
   horaCierre: '21:00'
 };
 
+const DURACION_MAXIMA = 3;
+
 const NEQUI_PAYMENT_NUMBER = '313 672 3305';
 const NEQUI_QR_LINK =
   process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/573128817505?text=Hola,%20quiero%20pagar%20mi%20reserva';
@@ -31,6 +33,30 @@ const parseFechaLocal = (fecha) => {
   return new Date(`${fecha}T00:00:00`);
 };
 
+const obtenerHorasSeleccionadas = (horaInicio, duracion, horario = []) => {
+  if (!horaInicio || !duracion || duracion < 1) return [];
+
+  const indiceInicio = horario.indexOf(horaInicio);
+  if (indiceInicio === -1) return [];
+
+  return horario.slice(indiceInicio, indiceInicio + duracion);
+};
+
+const formatearRangoHoras = (horas = []) => {
+  if (!horas.length) return '';
+  if (horas.length === 1) return horas[0];
+  return `${horas[0]} - ${horas[horas.length - 1]}`;
+};
+
+const obtenerHoraInicialDisponible = (duracion, horario = [], horasLibres = []) => {
+  if (!duracion || duracion < 1) return '';
+
+  return (horario || []).find((horaSlot) => {
+    const rango = obtenerHorasSeleccionadas(horaSlot, duracion, horario);
+    return rango.length === duracion && rango.every((hora) => horasLibres.includes(hora));
+  }) || '';
+};
+
 const Home = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [formData, setFormData] = useState({
@@ -38,7 +64,8 @@ const Home = () => {
     email_cliente: '',
     celular_cliente: '',
     fecha: today,
-    hora: DEFAULT_HORARIO.horas[0]
+    hora: DEFAULT_HORARIO.horas[0],
+    duracion: 1
   });
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   const [horasDisponibles, setHorasDisponibles] = useState(DEFAULT_HORARIO.horas);
@@ -58,6 +85,29 @@ const Home = () => {
       error: ''
     }
   });
+  
+  const horasValidasParaDuracion = (horarioDelDia.horas || []).filter((horaSlot) => {
+    const rango = obtenerHorasSeleccionadas(horaSlot, formData.duracion, horarioDelDia.horas);
+    return rango.length === formData.duracion && rango.every((hora) => horasDisponibles.includes(hora));
+  });
+
+  const horasSeleccionadas = obtenerHorasSeleccionadas(
+    formData.hora,
+    formData.duracion,
+    horarioDelDia.horas
+  );
+
+  useEffect(() => {
+    const horaSugerida = obtenerHoraInicialDisponible(formData.duracion, horarioDelDia.horas, horasDisponibles);
+
+    if (formData.hora && horasValidasParaDuracion.includes(formData.hora)) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      hora: horaSugerida || prev.hora
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.duracion, horasDisponibles, horarioDelDia.horas]);
   
   const cargarDisponibilidad = async (fecha) => {
     try {
@@ -90,11 +140,24 @@ const Home = () => {
         }
       }));
       
-      // Si la hora seleccionada ya no está disponible, seleccionar la primera disponible
-      setFormData((prev) => ({
-        ...prev,
-        hora: horasSeleccionables.includes(prev.hora) ? prev.hora : horasSeleccionables[0] || ''
-      }));
+      const horaInicialSugerida = obtenerHoraInicialDisponible(
+        formData.duracion,
+        horario.horas,
+        horasSeleccionables
+      );
+
+      setFormData((prev) => {
+        const duracion = Math.min(prev.duracion, DURACION_MAXIMA);
+        const rangoActual = obtenerHorasSeleccionadas(prev.hora, duracion, horario.horas);
+        const esRangoValido =
+          rangoActual.length === duracion && rangoActual.every((hora) => horasSeleccionables.includes(hora));
+        const horaPorDefecto = horaInicialSugerida || horasSeleccionables[0] || '';
+        return {
+          ...prev,
+          hora: esRangoValido ? prev.hora : horaPorDefecto,
+          duracion
+        };
+      });
     } catch (error) {
       // Si no se puede consultar la API, mostramos todos los horarios para evitar dejar la UI vacía
       setHorasDisponibles(DEFAULT_HORARIO.horas);
@@ -102,7 +165,8 @@ const Home = () => {
       setHorarioDelDia(DEFAULT_HORARIO);
       setFormData((prev) => ({
         ...prev,
-        hora: DEFAULT_HORARIO.horas.includes(prev.hora) ? prev.hora : DEFAULT_HORARIO.horas[0]
+        hora: DEFAULT_HORARIO.horas.includes(prev.hora) ? prev.hora : DEFAULT_HORARIO.horas[0],
+        duracion: Math.min(prev.duracion, DURACION_MAXIMA)
       }));
       setDisponibilidadCache((prev) => ({
         ...prev,
@@ -217,38 +281,65 @@ const Home = () => {
     e.preventDefault();
     setMensaje({ tipo: '', texto: '' });
 
-    if (!formData.hora) {
-      setMensaje({ tipo: 'error', texto: 'Selecciona un horario disponible' });
+   const horasSeleccionadas = obtenerHorasSeleccionadas(
+      formData.hora,
+      formData.duracion,
+      horarioDelDia.horas
+    );
+
+    if (horasSeleccionadas.length !== formData.duracion) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'Selecciona un bloque de horas consecutivas disponibles'
+      });
+      return;
+    }
+
+    const rangoDisponible = horasSeleccionadas.every((hora) => horasDisponibles.includes(hora));
+
+    if (!rangoDisponible) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'Alguna de las horas ya no está disponible. Elige otro bloque.'
+      });
       return;
     }
 
     try {
       setEnviando(true);
-      const horaReservada = formData.hora;
-      const response = await reservasAPI.crear(formData);
-      const reservaCreada = response.data?.reserva || formData;
-      const fechaLegible = format(parseFechaLocal(reservaCreada.fecha || formData.fecha), "dd 'de' MMMM, yyyy", { locale: es });
-      const texto = `¡Reserva creada! Te esperamos el ${fechaLegible} a las ${reservaCreada.hora || formData.hora}.`;
+      const response = await reservasAPI.crear({ ...formData, horas: horasSeleccionadas });
+      const reservasCreadas = response.data?.reservas || [];
+      const reservaBase = reservasCreadas[0] || formData;
+      const horasConfirmadas = reservasCreadas.length
+        ? reservasCreadas.map((reserva) => reserva.hora)
+        : horasSeleccionadas;
+      const horasOrdenadas = [...horasConfirmadas].sort(
+        (a, b) => (horarioDelDia.horas || []).indexOf(a) - (horarioDelDia.horas || []).indexOf(b)
+      );
+      const fechaLegible = format(parseFechaLocal(formData.fecha), "dd 'de' MMMM, yyyy", { locale: es });
+      const texto = `¡Reserva creada! Te esperamos el ${fechaLegible} de ${formatearRangoHoras(horasOrdenadas)}.`;
       setMensaje({ tipo: 'exito', texto });
       setResumenReserva({
-        nombre_cliente: reservaCreada.nombre_cliente,
-        email_cliente: reservaCreada.email_cliente,
-        celular_cliente: reservaCreada.celular_cliente,
-        fecha: reservaCreada.fecha,
-        hora: reservaCreada.hora
+        nombre_cliente: reservaBase.nombre_cliente,
+        email_cliente: reservaBase.email_cliente,
+        celular_cliente: reservaBase.celular_cliente,
+        fecha: reservaBase.fecha,
+        horas: horasOrdenadas
       });
       setFormData({
         nombre_cliente: '',
         email_cliente: '',
         celular_cliente: '',
         fecha: formData.fecha,
-        hora: ''
+        hora: obtenerHoraInicialDisponible(1, horarioDelDia.horas, horasDisponibles),
+        duracion: 1
       });
       
-      setHorasDisponibles((prev) => prev.filter((hora) => hora !== horaReservada));
+      setHorasDisponibles((prev) => prev.filter((hora) => !horasSeleccionadas.includes(hora)));
       setHorasOcupadas((prev) => {
-        if (prev.includes(horaReservada)) return prev;
-        return [...prev, horaReservada];
+        const nuevasOcupadas = new Set(prev);
+        horasSeleccionadas.forEach((hora) => nuevasOcupadas.add(hora));
+        return Array.from(nuevasOcupadas);
       });
 
       setDisponibilidadDias((prev) =>
@@ -256,8 +347,8 @@ const Home = () => {
           dia.fechaValor === formData.fecha
             ? {
                 ...dia,
-                horasDisponibles: dia.horasDisponibles.filter((hora) => hora !== horaReservada),
-                horasOcupadas: [...(dia.horasOcupadas || []), horaReservada]
+                horasDisponibles: dia.horasDisponibles.filter((hora) => !horasSeleccionadas.includes(hora)),
+                horasOcupadas: [...(dia.horasOcupadas || []), ...horasSeleccionadas]
               }
             : dia
         )
@@ -309,7 +400,9 @@ const Home = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs uppercase text-gray-500">Hora</p>
-                      <p className="text-lg font-semibold text-gray-800">{resumenReserva.hora}</p>
+                      <p className="text-lg font-semibold text-gray-800">
+                        {formatearRangoHoras(resumenReserva.horas || [])}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs uppercase text-gray-500">Estado</p>
@@ -441,35 +534,76 @@ const Home = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-gray-700 font-medium mb-2 flex items-center justify-between">
-                  <span>Horario</span>
-                  {consultando && <span className="text-sm text-gray-500">Actualizando disponibilidad...</span>}
-                </label>
-                <select
-                  required
-                  value={formData.hora}
-                  onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  disabled={consultando || horasDisponibles.length === 0}
-                >
-                  <option value="" disabled>
-                    {consultando ? 'Consultando horarios...' : 'Selecciona un horario'}
-                  </option>
-                  {horasDisponibles.map((hora) => (
-                    <option key={hora} value={hora}>
-                      {hora}
+             <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2 flex items-center justify-between">
+                    <span>Hora de inicio</span>
+                    {consultando && <span className="text-sm text-gray-500">Actualizando disponibilidad...</span>}
+                  </label>
+                  <select
+                    required
+                    value={formData.hora}
+                    onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    disabled={consultando || horasDisponibles.length === 0}
+                  >
+                    <option value="" disabled>
+                      {consultando ? 'Consultando horarios...' : 'Selecciona un horario'}
                     </option>
-                  ))}
-                </select>
-                {horasDisponibles.length === 0 && !consultando && (
-                  <p className="text-sm text-red-600 mt-2">No hay horarios disponibles para esta fecha.</p>
-                )}
+                  {horasValidasParaDuracion.map((hora) => (
+                      <option key={hora} value={hora}>
+                        {hora}
+                      </option>
+                    ))}
+                  </select>
+                  {horasValidasParaDuracion.length === 0 && !consultando && (
+                    <p className="text-sm text-red-600 mt-2">No hay bloques consecutivos disponibles para esta duración.</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Duración</label>
+                  <select
+                    value={formData.duracion}
+                    onChange={(e) => {
+                      const nuevaDuracion = Math.min(parseInt(e.target.value, 10) || 1, DURACION_MAXIMA);
+                      const horasValidasNuevaDuracion = (horarioDelDia.horas || []).filter((horaSlot) => {
+                        const rango = obtenerHorasSeleccionadas(horaSlot, nuevaDuracion, horarioDelDia.horas);
+                        return rango.length === nuevaDuracion && rango.every((hora) => horasDisponibles.includes(hora));
+                      });
+                      const horaSugerida = obtenerHoraInicialDisponible(
+                        nuevaDuracion,
+                        horarioDelDia.horas,
+                        horasDisponibles
+                      );
+
+                      setFormData((prev) => ({
+                        ...prev,
+                        duracion: nuevaDuracion,
+                        hora: prev.hora && horasValidasNuevaDuracion.includes(prev.hora) ? prev.hora : horaSugerida
+                      }));
+                    }}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    disabled={consultando || horasDisponibles.length === 0}
+                  >
+                    {Array.from({ length: DURACION_MAXIMA }, (_, idx) => idx + 1).map((duracion) => (
+                      <option key={duracion} value={duracion}>
+                        {duracion} hora{duracion > 1 ? 's' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-sm text-gray-500 mt-1">Selecciona hasta {DURACION_MAXIMA} horas consecutivas.</p>
+                </div>
               </div>
 
             <button
                 type="submit"
-                disabled={enviando || consultando || horasDisponibles.length === 0}
+                disabled={
+                  enviando ||
+                  consultando ||
+                  horasDisponibles.length === 0 ||
+                  horasValidasParaDuracion.length === 0
+                }
                 className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition disabled:bg-gray-400"
               >
                 {enviando ? 'Reservando...' : 'Reservar' }
@@ -494,14 +628,22 @@ const Home = () => {
                 {(horarioDelDia.horas || []).map((horaSlot) => {
                   const estaReservada = horasOcupadas.includes(horaSlot);
                   const disponible = horasDisponibles.includes(horaSlot) && !estaReservada;
-                  const estaSeleccionada = formData.hora === horaSlot;
+                  const rangoParaHora = obtenerHorasSeleccionadas(
+                    horaSlot,
+                    formData.duracion,
+                    horarioDelDia.horas
+                  );
+                  const bloqueDisponible =
+                    rangoParaHora.length === formData.duracion &&
+                    rangoParaHora.every((hora) => horasDisponibles.includes(hora));
+                  const estaSeleccionada = horasSeleccionadas.includes(horaSlot);
 
                   let estadoClase = 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed';
                   if (estaReservada) {
                     estadoClase = 'border-rose-200 bg-rose-50 text-rose-700 cursor-not-allowed';
                   } else if (disponible && estaSeleccionada) {
                     estadoClase = 'border-primary bg-green-50 text-primary';
-                  } else if (disponible) {
+                  } else if (disponible && bloqueDisponible) {
                     estadoClase = 'border-gray-200 hover:border-primary hover:bg-green-50';
                   }
 
@@ -509,8 +651,20 @@ const Home = () => {
                     <button
                       key={horaSlot}
                       type="button"
-                      onClick={() => disponible && setFormData({ ...formData, hora: horaSlot })}
-                      disabled={!disponible}
+                      onClick={() => {
+                        if (!disponible) return;
+
+                        if (!bloqueDisponible) {
+                          setMensaje({
+                            tipo: 'error',
+                            texto: 'Elige una hora inicial que tenga suficiente disponibilidad para tu duración.'
+                          });
+                          return;
+                        }
+
+                        setFormData({ ...formData, hora: horaSlot });
+                      }}
+                      disabled={!disponible || !bloqueDisponible}
                       className={`p-3 rounded-lg border text-center font-semibold transition ${estadoClase}`}
                     >
                       <div className="flex flex-col items-center gap-1">
