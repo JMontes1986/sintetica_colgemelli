@@ -84,7 +84,8 @@ export const estadisticasAPI = {
   obtenerGeneral: () => api.get('/estadisticas/general'),
   obtenerPorDia: () => api.get('/estadisticas/por-dia'),
   obtenerPorMes: () => api.get('/estadisticas/por-mes'),
-  obtenerHoy: () => api.get('/estadisticas/hoy')
+  obtenerHoy: () => api.get('/estadisticas/hoy'),
+  obtenerRecaudado: (params) => api.get('/estadisticas/recaudado', { params })
 };
 
 // API de Configuración
