@@ -13,6 +13,9 @@ const DashboardCancha = () => {
   const [filtro, setFiltro] = useState('todas');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+  const [reservaPagoSeleccionada, setReservaPagoSeleccionada] = useState(null);
+  const [pagoForm, setPagoForm] = useState({ metodo_pago: 'Nequi', referencia_nequi: '' });
+  const [registrandoPago, setRegistrandoPago] = useState(false);
   
   const [formData, setFormData] = useState({
     nombre_cliente: '',
@@ -73,6 +76,42 @@ const DashboardCancha = () => {
     }
   };
 
+  const abrirModalPago = (reserva) => {
+    setReservaPagoSeleccionada(reserva);
+    setPagoForm({
+      metodo_pago: reserva.metodo_pago || 'Nequi',
+      referencia_nequi: reserva.referencia_nequi || ''
+    });
+  };
+
+  const registrarPago = async (e) => {
+    e.preventDefault();
+
+    if (!reservaPagoSeleccionada) return;
+
+    try {
+      setRegistrandoPago(true);
+      await reservasAPI.registrarPago(reservaPagoSeleccionada.id, {
+        metodo_pago: pagoForm.metodo_pago,
+        referencia_nequi:
+          pagoForm.metodo_pago === 'Nequi' && pagoForm.referencia_nequi
+            ? pagoForm.referencia_nequi.trim()
+            : ''
+      });
+      setMensaje({ tipo: 'success', texto: 'Pago registrado correctamente' });
+      setReservaPagoSeleccionada(null);
+      setPagoForm({ metodo_pago: 'Nequi', referencia_nequi: '' });
+      cargarReservas();
+    } catch (error) {
+      setMensaje({
+        tipo: 'error',
+        texto: error.response?.data?.error || 'No pudimos registrar el pago'
+      });
+    } finally {
+      setRegistrandoPago(false);
+    }
+  };
+  
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -86,6 +125,72 @@ const DashboardCancha = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+    {reservaPagoSeleccionada && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black bg-opacity-50 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-800">Registrar pago</h3>
+              <button
+                onClick={() => setReservaPagoSeleccionada(null)}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Cerrar modal de pago"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mb-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
+              <p className="font-semibold text-primary">{reservaPagoSeleccionada.nombre_cliente}</p>
+              <p>{format(new Date(reservaPagoSeleccionada.fecha), "dd 'de' MMMM, yyyy", { locale: es })}</p>
+              <p className="text-gray-600">Hora: {reservaPagoSeleccionada.hora}</p>
+            </div>
+            <form onSubmit={registrarPago} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Método de pago</label>
+                <select
+                  value={pagoForm.metodo_pago}
+                  onChange={(e) => setPagoForm({ ...pagoForm, metodo_pago: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-primary"
+                >
+                  <option value="Nequi">Nequi</option>
+                  <option value="Efectivo">Efectivo</option>
+                </select>
+              </div>
+
+              {pagoForm.metodo_pago === 'Nequi' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Número de transacción (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={pagoForm.referencia_nequi}
+                    onChange={(e) => setPagoForm({ ...pagoForm, referencia_nequi: e.target.value })}
+                    placeholder="Ej: 123456789"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReservaPagoSeleccionada(null)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={registrandoPago}
+                  className="rounded-lg bg-primary px-4 py-2 text-white hover:bg-green-600 disabled:bg-gray-400"
+                >
+                  {registrandoPago ? 'Guardando...' : 'Guardar pago'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="bg-white shadow-md">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
@@ -246,6 +351,9 @@ const DashboardCancha = () => {
                       Estado
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Pago
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Acciones
                     </th>
                   </tr>
@@ -279,15 +387,37 @@ const DashboardCancha = () => {
                           {reserva.estado}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {reserva.estado === 'Pendiente' && (
-                          <button
-                            onClick={() => cambiarEstado(reserva.id, 'Jugado')}
-                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
-                          >
-                            Marcar Jugado
-                          </button>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {reserva.pago_registrado ? (
+                          <div className="text-sm text-gray-800">
+                            <p className="font-semibold">{reserva.metodo_pago}</p>
+                            {reserva.metodo_pago === 'Nequi' && reserva.referencia_nequi && (
+                              <p className="text-xs text-gray-500">Ref: {reserva.referencia_nequi}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                            Pendiente
+                          </span>
                         )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => abrirModalPago(reserva)}
+                            className="px-3 py-1 rounded bg-secondary text-white hover:bg-blue-600 transition"
+                          >
+                            {reserva.pago_registrado ? 'Actualizar pago' : 'Registrar pago'}
+                          </button>
+                        {reserva.estado === 'Pendiente' && (
+                            <button
+                              onClick={() => cambiarEstado(reserva.id, 'Jugado')}
+                              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
+                            >
+                              Marcar Jugado
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
