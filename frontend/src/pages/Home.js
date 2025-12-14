@@ -138,94 +138,75 @@ const Home = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.duracion, horasDisponibles, horarioDelDia.horas]);
   
-  const prepararDatosDisponibilidad = (fecha, datos = {}) => {
-    const horario = datos.horario?.horas?.length
-      ? {
-          horas: datos.horario.horas,
-          horaApertura: datos.horario.horaApertura,
-          horaCierre: datos.horario.horaCierre
-        }
-      : DEFAULT_HORARIO;
-
-    const horasBase = horario.horas?.length ? horario.horas : DEFAULT_HORARIO.horas;
-    const horasOcupadasAPI = datos.horasOcupadas || [];
-    const horasDisponiblesAPI = datos.horasDisponibles || [];
-    const horasLibres = horasDisponiblesAPI.length
-      ? horasDisponiblesAPI
-      : horasBase.filter((hora) => !horasOcupadasAPI.includes(hora));
-    const horasSeleccionables = horasLibres.length ? horasLibres : horasBase;
-
-    return { horario, horasOcupadasAPI, horasSeleccionables };
-  };
-
-  const aplicarDisponibilidad = (datosDisponibilidad) => {
-    const { horario, horasOcupadasAPI, horasSeleccionables } = datosDisponibilidad;
-
-    setHorasDisponibles(horasSeleccionables);
-    setHorasOcupadas(horasOcupadasAPI);
-    setHorarioDelDia(horario);
-
-    const horaInicialSugerida = obtenerHoraInicialDisponible(
-      formData.duracion,
-      horario.horas,
-      horasSeleccionables
-    );
-
-    setFormData((prev) => {
-      const duracion = Math.min(prev.duracion, DURACION_MAXIMA);
-      const rangoActual = obtenerHorasSeleccionadas(prev.hora, duracion, horario.horas);
-      const esRangoValido =
-        rangoActual.length === duracion && rangoActual.every((hora) => horasSeleccionables.includes(hora));
-      const horaPorDefecto = horaInicialSugerida || horasSeleccionables[0] || '';
-      return {
-        ...prev,
-        hora: esRangoValido ? prev.hora : horaPorDefecto,
-        duracion
-      };
-    });
-  };
-  
   const cargarDisponibilidad = async (fecha) => {
-    const cacheDia = disponibilidadCache[fecha];
-
-    if (cacheDia && !cacheDia.error) {
-      aplicarDisponibilidad(prepararDatosDisponibilidad(fecha, cacheDia));
-      return;
-    }
-
-    const prepararYGuardar = (datosRespuesta, error = '') => {
-      const datosDisponibilidadPreparados = prepararDatosDisponibilidad(fecha, datosRespuesta);
-  
-    setDisponibilidadCache((prev) => ({
-        ...prev,
-        [fecha]: {
-          horasDisponibles: datosDisponibilidadPreparados.horasSeleccionables,
-          horasOcupadas: datosDisponibilidadPreparados.horasOcupadasAPI,
-          horario: datosDisponibilidadPreparados.horario,
-          error
-        }
-      }));
-      
-    aplicarDisponibilidad(datosDisponibilidadPreparados);
-    };
-
     try {
       setConsultando(true);
       const response = await reservasAPI.obtenerDisponibilidad(fecha);
-      prepararYGuardar(response.data);
-    } catch (error) {
-      prepararYGuardar(
-        {
-        horasDisponibles: DEFAULT_HORARIO.horas,
-        horasOcupadas: [],
-        horario: DEFAULT_HORARIO
-        },
-        error.response?.data?.error || 'Sin datos de disponibilidad'
+      const horasOcupadasAPI = response.data.horasOcupadas || [];
+      const horario = response.data.horario?.horas?.length
+        ? {
+            horas: response.data.horario.horas,
+            horaApertura: response.data.horario.horaApertura,
+            horaCierre: response.data.horario.horaCierre
+          }
+        : DEFAULT_HORARIO;
+
+      const horas = horario.horas?.length ? horario.horas : DEFAULT_HORARIO.horas;
+      const horasLibres = horas.filter((hora) => !horasOcupadasAPI.includes(hora));
+      const horasSeleccionables = horasLibres.length ? horasLibres : horas;
+
+      setHorasDisponibles(horasSeleccionables);
+      setHorasOcupadas(horasOcupadasAPI);
+      setHorarioDelDia(horario);
+
+      setDisponibilidadCache((prev) => ({
+        ...prev,
+        [fecha]: {
+          horasDisponibles: horasSeleccionables,
+          horasOcupadas: horasOcupadasAPI,
+          horario,
+          error: ''
+        }
+      }));
+      
+      const horaInicialSugerida = obtenerHoraInicialDisponible(
+        formData.duracion,
+        horario.horas,
+        horasSeleccionables
       );
+
+      setFormData((prev) => {
+        const duracion = Math.min(prev.duracion, DURACION_MAXIMA);
+        const rangoActual = obtenerHorasSeleccionadas(prev.hora, duracion, horario.horas);
+        const esRangoValido =
+          rangoActual.length === duracion && rangoActual.every((hora) => horasSeleccionables.includes(hora));
+        const horaPorDefecto = horaInicialSugerida || horasSeleccionables[0] || '';
+        return {
+          ...prev,
+          hora: esRangoValido ? prev.hora : horaPorDefecto,
+          duracion
+        };
+      });
+    } catch (error) {
+      // Si no se puede consultar la API, mostramos todos los horarios para evitar dejar la UI vacía
+      setHorasDisponibles(DEFAULT_HORARIO.horas);
+      setHorasOcupadas([]);
+      setHorarioDelDia(DEFAULT_HORARIO);
+      setFormData((prev) => ({
+        ...prev,
+        hora: DEFAULT_HORARIO.horas.includes(prev.hora) ? prev.hora : DEFAULT_HORARIO.horas[0],
+        duracion: Math.min(prev.duracion, DURACION_MAXIMA)
+      }));
+      setDisponibilidadCache((prev) => ({
+        ...prev,
+        [fecha]: {
+          horasDisponibles: DEFAULT_HORARIO.horas,
+          horasOcupadas: [],
+          horario: DEFAULT_HORARIO,
+          error: error.response?.data?.error || 'Sin datos de disponibilidad'
+        }
+      }));
     } finally {
-      if (datosDisponibilidadPreparados) {
-        aplicarDisponibilidad(datosDisponibilidadPreparados);
-      }
       setConsultando(false);
     }
   };
