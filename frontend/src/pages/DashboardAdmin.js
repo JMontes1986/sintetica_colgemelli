@@ -36,6 +36,14 @@ const DashboardAdmin = () => {
   });
   const [cargandoHorarios, setCargandoHorarios] = useState(false);
   const [guardandoHorario, setGuardandoHorario] = useState(false);
+
+  // Recaudo
+  const [recaudo, setRecaudo] = useState({ total: 0, reservasPagadas: 0, precioUnitario: 0 });
+  const [filtroRecaudo, setFiltroRecaudo] = useState({
+    tipo: 'dia',
+    valor: format(new Date(), 'yyyy-MM-dd')
+  });
+  const [cargandoRecaudo, setCargandoRecaudo] = useState(false);
   
   const [formData, setFormData] = useState({
     nombre_cliente: '',
@@ -85,12 +93,34 @@ const DashboardAdmin = () => {
       setCargandoHorarios(false);
     }
   }, []);
+
+  const cargarRecaudo = useCallback(async () => {
+    setCargandoRecaudo(true);
+    try {
+      const params =
+        filtroRecaudo.tipo === 'mes'
+          ? { tipo: 'mes', mes: filtroRecaudo.valor }
+          : { tipo: 'dia', fecha: filtroRecaudo.valor };
+
+      const response = await estadisticasAPI.obtenerRecaudado(params);
+      setRecaudo({
+        total: response.data?.totalRecaudado || 0,
+        reservasPagadas: response.data?.reservasPagadas || 0,
+        precioUnitario: response.data?.precioUnitario || 0
+      });
+    } catch (error) {
+      console.error('Error al cargar recaudo:', error);
+      setMensaje({ tipo: 'error', texto: 'No pudimos cargar el recaudo.' });
+    } finally {
+      setCargandoRecaudo(false);
+    }
+  }, [filtroRecaudo]);
   
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
       if (vistaActual === 'estadisticas') {
-        await cargarEstadisticas();
+        await Promise.all([cargarEstadisticas(), cargarRecaudo()]);
       } else {
         await Promise.all([cargarReservas(), cargarHorarios()]);
       }
@@ -99,12 +129,18 @@ const DashboardAdmin = () => {
     } finally {
       setLoading(false);
     }
-  }, [vistaActual, cargarEstadisticas, cargarReservas, cargarHorarios]);
-
+  }, [vistaActual, cargarEstadisticas, cargarReservas, cargarHorarios, cargarRecaudo]);
+  
   useEffect(() => {
     cargarDatos();
   }, [cargarDatos]);
 
+  useEffect(() => {
+    if (vistaActual === 'estadisticas') {
+      cargarRecaudo();
+    }
+  }, [filtroRecaudo, vistaActual, cargarRecaudo]);
+  
   const cambiarEstado = async (id, nuevoEstado) => {
     try {
       await reservasAPI.actualizarEstado(id, nuevoEstado);
@@ -225,7 +261,12 @@ const DashboardAdmin = () => {
   };
 
   const COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444'];
-
+  const currencyFormatter = new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0
+  });
+  
   const dataPie = estadisticasGenerales ? [
     { name: 'Jugadas', value: estadisticasGenerales.reservasJugadas },
     { name: 'Pendientes', value: estadisticasGenerales.reservasPendientes }
@@ -364,7 +405,7 @@ const DashboardAdmin = () => {
           <div>
             {/* Tarjetas de métricas */}
             {estadisticasGenerales && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 <div className="bg-white rounded-xl shadow-lg p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -408,6 +449,67 @@ const DashboardAdmin = () => {
                     <div className="bg-yellow-100 rounded-full p-3">
                       <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-lg p-6 md:col-span-2">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                        <select
+                          value={filtroRecaudo.tipo}
+                          onChange={(e) => {
+                            const tipo = e.target.value;
+                            setFiltroRecaudo({
+                              tipo,
+                              valor:
+                                tipo === 'mes'
+                                  ? format(new Date(), 'yyyy-MM')
+                                  : format(new Date(), 'yyyy-MM-dd')
+                            });
+                          }}
+                          className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="dia">Por día</option>
+                          <option value="mes">Por mes</option>
+                        </select>
+
+                        <input
+                          type={filtroRecaudo.tipo === 'mes' ? 'month' : 'date'}
+                          value={filtroRecaudo.valor}
+                          onChange={(e) =>
+                            setFiltroRecaudo((prev) => ({ ...prev, valor: e.target.value }))
+                          }
+                          className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+
+                      <p className="text-gray-500 text-sm font-medium">Recaudado</p>
+                      <p className="text-3xl font-bold text-gray-900 mt-2">
+                        {cargandoRecaudo ? 'Calculando...' : currencyFormatter.format(recaudo.total)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Pagos confirmados: {recaudo.reservasPagadas} · Valor por reserva:{' '}
+                        {currencyFormatter.format(recaudo.precioUnitario)}
+                      </p>
+                    </div>
+
+                    <div className="bg-primary/10 rounded-full p-3 text-primary">
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V5m0 11v3m7-12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                     </div>
                   </div>
