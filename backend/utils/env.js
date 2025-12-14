@@ -7,7 +7,17 @@ const getJwtSecret = () => {
     throw error;
   }
 
-  return process.env.JWT_SECRET;
+  const secret = process.env.JWT_SECRET;
+
+  if (secret.length < 32) {
+    const error = new Error(
+      'JWT_SECRET es débil. Usa una cadena de al menos 32 caracteres. Ejemplo: `openssl rand -hex 64`'
+    );
+    error.code = 'JWT_SECRET_WEAK';
+    throw error;
+  }
+
+  return secret;
 };
 
 module.exports = { getJwtSecret };
