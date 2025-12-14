@@ -4,6 +4,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const logger = require('./middleware/logger');
+const sanitizeRequest = require('./middleware/sanitize');
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
@@ -26,6 +27,17 @@ app.use(helmet({
   },
   crossOriginEmbedderPolicy: false
 }));
+
+// Forzar HTTPS en producción
+app.enable('trust proxy');
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] === 'http') {
+    const secureUrl = `https://${req.headers.host}${req.originalUrl}`;
+    return res.redirect(301, secureUrl);
+  }
+
+  return next();
+});
 
 // Rate limiting
 const loginLimiter = rateLimit({
@@ -93,6 +105,7 @@ const corsOptions = {
 // Middlewares
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(sanitizeRequest);
 app.use(logger);
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/reservas/crear', reservasLimiter);
