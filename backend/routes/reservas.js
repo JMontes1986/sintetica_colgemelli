@@ -12,6 +12,7 @@ const TIMEZONE_OFFSET_COLOMBIA = '-05:00';
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^\d{2}:\d{2}$/;
 const ESTADOS_VALIDOS = ['Pendiente', 'Jugado'];
+const METODOS_PAGO_VALIDOS = ['Nequi', 'Efectivo'];
 const MAX_HORAS_CONSECUTIVAS = 3;
 
 const obtenerFechaActualColombia = () => new Date(
@@ -496,6 +497,46 @@ router.patch('/:id/estado', verificarToken, verificarRol('cancha', 'admin'), asy
     });
   } catch (error) {
     return handleSupabaseError(res, error, 'Error al actualizar el estado', 'Error al actualizar estado:');
+  }
+});
+
+// Registrar método de pago (cancha y admin)
+router.patch('/:id/pago', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { id } = req.params;
+    const metodo_pago = sanitizarTexto(req.body?.metodo_pago);
+    const referencia_nequi = sanitizarTexto(req.body?.referencia_nequi);
+
+    if (!esIdValido(id)) {
+      return res.status(400).json({ error: 'Identificador inválido' });
+    }
+
+    if (!metodo_pago || !METODOS_PAGO_VALIDOS.includes(metodo_pago)) {
+      return res.status(400).json({ error: 'Método de pago inválido' });
+    }
+
+    const payload = {
+      metodo_pago,
+      pago_registrado: true,
+      referencia_nequi: metodo_pago === 'Nequi' && referencia_nequi ? referencia_nequi : null
+    };
+
+    const { data, error } = await supabase
+      .from('reservas')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      message: 'Pago registrado correctamente',
+      reserva: formatearReserva(data)
+    });
+  } catch (error) {
+    return handleSupabaseError(res, error, 'Error al registrar el pago', 'Error al registrar pago:');
   }
 });
 
