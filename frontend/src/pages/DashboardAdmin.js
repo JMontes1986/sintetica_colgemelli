@@ -831,7 +831,7 @@ const DashboardAdmin = () => {
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            reserva.pago_registrado ? (
+                            {reserva.pago_registrado ? (
                               <div className="text-sm text-gray-800">
                                 <p className="font-semibold">{reserva.metodo_pago}</p>
                                 {reserva.metodo_pago === 'Nequi' && reserva.referencia_nequi && (
