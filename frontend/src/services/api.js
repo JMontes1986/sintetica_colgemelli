@@ -73,6 +73,7 @@ export const reservasAPI = {
   obtenerTodas: (params) => api.get('/reservas', { params }),
   obtenerPorId: (id) => api.get(`/reservas/${id}`),
   actualizarEstado: (id, estado) => api.patch(`/reservas/${id}/estado`, { estado }),
+  registrarPago: (id, payload) => api.patch(`/reservas/${id}/pago`, payload),
   crearManual: (datos) => api.post('/reservas/manual', datos),
   eliminar: (id) => api.delete(`/reservas/${id}`),
   obtenerDisponibilidad: (fecha) => api.get(`/reservas/disponibilidad/${fecha}`)
