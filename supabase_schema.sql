@@ -21,10 +21,19 @@ CREATE TABLE IF NOT EXISTS reservas (
   fecha DATE NOT NULL,
   hora TIME NOT NULL,
   estado TEXT NOT NULL DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente', 'Jugado')),
+  metodo_pago TEXT CHECK (metodo_pago IN ('Nequi', 'Efectivo')),
+  referencia_nequi TEXT,
+  pago_registrado BOOLEAN NOT NULL DEFAULT FALSE,
   creado_por UUID REFERENCES usuarios(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Asegurar columnas de pago en instalaciones existentes
+ALTER TABLE IF EXISTS reservas
+  ADD COLUMN IF NOT EXISTS metodo_pago TEXT CHECK (metodo_pago IN ('Nequi', 'Efectivo')),
+  ADD COLUMN IF NOT EXISTS referencia_nequi TEXT,
+  ADD COLUMN IF NOT EXISTS pago_registrado BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- 3. Configuración de horarios (rangos personalizados por fecha)
 CREATE TABLE IF NOT EXISTS configuracion_horarios (
