@@ -2,6 +2,8 @@
 
 Se revisaron las rutas del backend (`routes/`) y no se encontraron consultas construidas por concatenación de strings ni llamadas `rpc` con SQL crudo. Todas las operaciones con Supabase se realizan mediante el query builder (`from`, `select`, `eq`, `gte`, `lte`, `insert`, `update`, etc.), lo que aplica sanitización automática de los parámetros.
 
+Se fortaleció el middleware `sanitize` para descartar claves maliciosas (`$`, `.` o propiedades mágica
+
 ## Buenas prácticas reforzadas
 - Mantener el uso de los métodos encadenados del cliente Supabase para filtrar valores provenientes del usuario (por ejemplo: `.eq('fecha', fecha)`, `.in('hora', horasOrdenadas)`).
 - Evitar construir strings de filtros manualmente en métodos como `.or()` o `rpc` y preferir pasar los valores como parámetros independientes.
