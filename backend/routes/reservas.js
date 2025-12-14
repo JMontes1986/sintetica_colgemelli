@@ -177,10 +177,6 @@ router.post('/crear', async (req, res) => {
         .json({ error: `Puedes reservar hasta ${MAX_HORAS_CONSECUTIVAS} horas consecutivas` });
     }
 
-    if (!esHoraValida(hora)) {
-      return res.status(400).json({ error: 'Hora es requerida y debe tener formato HH:mm' });
-    }
-
     const horasNormalizadas = [...new Set(horasSolicitadas.map(normalizarHora))];
 
     if (!horasNormalizadas.every(esHoraValida)) {
@@ -207,7 +203,7 @@ router.post('/crear', async (req, res) => {
       .from('reservas')
       .select('hora')
       .eq('fecha', fecha)
-      ..in('hora', horasOrdenadas);
+      .in('hora', horasOrdenadas);
 
     if (errorReservaExistente) throw errorReservaExistente;
 
@@ -332,9 +328,9 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
     const { data: existentes, error: errorReservaExistente } = await supabase
       .from('reservas')
       .select('hora')
-      .in('hora', horasOrdenadas);
-      .maybeSingle();
+      .eq('fecha', fecha)
 
+    
     if (errorReservaExistente) throw errorReservaExistente;
 
     if (existentes?.length) {
