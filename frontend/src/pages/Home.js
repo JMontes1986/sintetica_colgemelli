@@ -195,9 +195,9 @@ const Home = () => {
 
     let datosDisponibilidadPreparados;
     
+    try {
       setConsultando(true);
       const response = await reservasAPI.obtenerDisponibilidad(fecha);
-      const datosDisponibilidad = prepararDatosDisponibilidad(fecha, response.data);
       datosDisponibilidadPreparados = prepararDatosDisponibilidad(fecha, response.data);
     
       setDisponibilidadCache((prev) => ({
@@ -226,7 +226,9 @@ const Home = () => {
         }
       }));
     } finally {
-      aplicarDisponibilidad(datosDisponibilidad);
+      if (datosDisponibilidadPreparados) {
+        aplicarDisponibilidad(datosDisponibilidadPreparados);
+      }
       setConsultando(false);
     }
   };
