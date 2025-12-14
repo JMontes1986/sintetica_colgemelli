@@ -458,6 +458,23 @@ const Home = () => {
             <p className="text-gray-600 mt-2 max-w-2xl">
               Agenda tu partido sin registrarte. Elige la fecha y el horario disponibles, completa tus datos y listo.
             </p>
+        <div className="mt-4 space-y-3 rounded-xl bg-gradient-to-r from-green-50 to-blue-50 p-4 text-gray-800 shadow-sm">
+              <p className="text-lg font-semibold">Horarios y tarifas vigentes – Temporada de Vacaciones</p>
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-primary">Público general</p>
+                <p className="text-sm">Lunes a viernes</p>
+                <p className="text-sm">8:00 a.m. a 4:00 p.m.: $100.000 COP por hora</p>
+                <p className="text-sm">5:00 p.m. a 9:00 p.m.: $130.000 COP por hora</p>
+                <p className="text-sm">Sábados, domingos y festivos</p>
+                <p className="text-sm">Todo el día: $130.000 COP por hora</p>
+              </div>
+              <div className="space-y-2 border-t border-gray-200 pt-3">
+                <p className="text-sm font-semibold text-primary">Tarifa especial – Familia Gemellista</p>
+                <p className="text-sm">Lunes a domingo</p>
+                <p className="text-sm">8:00 a.m. a 4:00 p.m.: $90.000 COP por hora</p>
+                <p className="text-sm">5:00 p.m. a 9:00 p.m.: $110.000 COP por hora</p>
+              </div>
+            </div>
           </div>
           <Link
             to="/login"
