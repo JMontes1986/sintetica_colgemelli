@@ -210,6 +210,7 @@ const Home = () => {
 
   const horasParaPago = resumenReserva?.horas || horasSeleccionadas;
   const fechaParaPago = resumenReserva?.fecha || formData.fecha;
+  const esFamiliaGemellista = resumenReserva?.es_familia_gemellista || formData.es_familia_gemellista;
   const estadoGemellista =
     resumenReserva?.es_familia_gemellista || formData.es_familia_gemellista;
   const estadoGemellista =
