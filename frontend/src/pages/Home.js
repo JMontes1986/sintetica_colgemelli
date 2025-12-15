@@ -210,12 +210,13 @@ const Home = () => {
 
   const horasParaPago = resumenReserva?.horas || horasSeleccionadas;
   const fechaParaPago = resumenReserva?.fecha || formData.fecha;
-  const esFamiliaGemellistaSeleccionado =
-    resumenReserva?.es_familia_gemellista ?? formData.es_familia_gemellista;
+  const estadoGemellista =
+    resumenReserva?.estado_gemellista || (formData.es_familia_gemellista ? 'Pendiente' : 'No aplica');
+  const tieneTarifaGemellistaActiva = estadoGemellista === 'Aprobado';
   const totalResumenReserva = calcularTotalReserva(
     horasParaPago,
     fechaParaPago,
-    esFamiliaGemellistaSeleccionado
+    tieneTarifaGemellistaActiva
   );
   const esDiaFestivoSeleccionado = esFestivoColombia(formData.fecha);
   
@@ -442,6 +443,8 @@ const Home = () => {
       const response = await reservasAPI.crear({ ...formData, horas: horasSeleccionadas });
       const reservasCreadas = response.data?.reservas || [];
       const reservaBase = reservasCreadas[0] || formData;
+      const estadoGemellistaRespuesta =
+        reservaBase.estado_gemellista || (reservaBase.es_familia_gemellista ? 'Pendiente' : 'No aplica');
       const horasConfirmadas = reservasCreadas.length
         ? reservasCreadas.map((reserva) => reserva.hora)
         : horasSeleccionadas;
@@ -458,6 +461,7 @@ const Home = () => {
         es_familia_gemellista: reservaBase.es_familia_gemellista,
         nombre_gemellista: reservaBase.nombre_gemellista,
         cedula_gemellista: reservaBase.cedula_gemellista,
+        estado_gemellista: estadoGemellistaRespuesta,
         fecha: reservaBase.fecha,
         horas: horasOrdenadas
       });
@@ -548,24 +552,35 @@ const Home = () => {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs uppercase text-gray-500">Reservado por</p>
-                    <p className="text-lg font-semibold text-gray-800">{resumenReserva.nombre_cliente}</p>
-                    <p className="text-sm text-gray-600">{resumenReserva.email_cliente}</p>
-                    <p className="text-sm text-gray-600">{resumenReserva.celular_cliente}</p>
-                  </div>
-                  {resumenReserva.es_familia_gemellista && (
-                    <div className="rounded-lg border border-primary/40 bg-white p-3">
-                      <p className="text-xs uppercase text-primary font-semibold">Tarifa Familia Gemellista</p>
-                      <p className="text-sm text-gray-700">
-                        Nombre registrado: <span className="font-semibold">{resumenReserva.nombre_gemellista}</span>
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        Cédula: <span className="font-semibold">{resumenReserva.cedula_gemellista}</span>
-                      </p>
-                    </div>
-                  )}
+                  <p className="text-xs uppercase text-gray-500">Reservado por</p>
+                  <p className="text-lg font-semibold text-gray-800">{resumenReserva.nombre_cliente}</p>
+                  <p className="text-sm text-gray-600">{resumenReserva.email_cliente}</p>
+                  <p className="text-sm text-gray-600">{resumenReserva.celular_cliente}</p>
                 </div>
+                {resumenReserva.es_familia_gemellista && (
+                  <div className="rounded-lg border border-primary/40 bg-white p-3">
+                    <p className="text-xs uppercase text-primary font-semibold">Tarifa Familia Gemellista</p>
+                    <p className="text-sm text-gray-700">
+                      Nombre registrado: <span className="font-semibold">{resumenReserva.nombre_gemellista}</span>
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      Cédula: <span className="font-semibold">{resumenReserva.cedula_gemellista}</span>
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      Estado de verificación:{' '}
+                      <span className="font-semibold capitalize">
+                        {resumenReserva.estado_gemellista || 'Pendiente'}
+                      </span>
+                    </p>
+                    {resumenReserva.estado_gemellista !== 'Aprobado' && (
+                      <p className="mt-1 text-xs text-blue-700">
+                        Mientras se aprueba, la reserva se cobra con la tarifa general.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
+            </div>
 
               <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-green-50 p-4 shadow-inner">
                 <div className="flex items-center justify-between">
@@ -722,7 +737,8 @@ const Home = () => {
                   <div>
                     <p className="text-gray-800 font-semibold">¿Eres parte de la Familia Gemellista?</p>
                     <p className="text-sm text-gray-600">
-                      Si lo eres, comparte tu nombre y cédula para aplicar la tarifa especial.
+                     Si lo eres, comparte tu nombre y cédula. Un administrador validará la información y, si es aprobado,
+                      aplicaremos la tarifa especial.
                     </p>
                   </div>
                   <div className="flex gap-4">
