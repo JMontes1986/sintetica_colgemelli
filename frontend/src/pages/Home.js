@@ -54,11 +54,15 @@ const esFinDeSemana = (fecha) => {
   return diaSemana === 0 || diaSemana === 6;
 };
 
-const obtenerTarifaPorHora = (hora, fecha) => {
+const obtenerTarifaPorHora = (hora, fecha, esFamiliaGemellista = false) => {
   const horaEntera = parseInt(hora?.slice(0, 2), 10);
 
   if (Number.isNaN(horaEntera)) return 0;
 
+  if (esFamiliaGemellista) {
+    return horaEntera >= 17 ? 110000 : 90000;
+  }
+  
   if (esFinDeSemana(fecha)) return 130000;
 
   return horaEntera >= 17 ? 130000 : 100000;
@@ -140,8 +144,11 @@ const esFestivoColombia = (fechaISO) => {
   return festivos.has(fechaISO);
 };
 
-const calcularTotalReserva = (horas = [], fecha) =>
-  (horas || []).reduce((total, hora) => total + obtenerTarifaPorHora(hora, fecha), 0);
+const calcularTotalReserva = (horas = [], fecha, esFamiliaGemellista = false) =>
+  (horas || []).reduce(
+    (total, hora) => total + obtenerTarifaPorHora(hora, fecha, esFamiliaGemellista),
+    0
+  );
 
 const formatearCOP = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -164,6 +171,9 @@ const Home = () => {
     nombre_cliente: '',
     email_cliente: '',
     celular_cliente: '',
+    es_familia_gemellista: false,
+    nombre_gemellista: '',
+    cedula_gemellista: '',
     fecha: today,
     hora: DEFAULT_HORARIO.horas[0],
     duracion: 1
@@ -200,7 +210,13 @@ const Home = () => {
 
   const horasParaPago = resumenReserva?.horas || horasSeleccionadas;
   const fechaParaPago = resumenReserva?.fecha || formData.fecha;
-  const totalResumenReserva = calcularTotalReserva(horasParaPago, fechaParaPago);
+  const esFamiliaGemellistaSeleccionado =
+    resumenReserva?.es_familia_gemellista ?? formData.es_familia_gemellista;
+  const totalResumenReserva = calcularTotalReserva(
+    horasParaPago,
+    fechaParaPago,
+    esFamiliaGemellistaSeleccionado
+  );
   const esDiaFestivoSeleccionado = esFestivoColombia(formData.fecha);
   
   useEffect(() => {
@@ -411,6 +427,16 @@ const Home = () => {
       return;
     }
 
+    if (formData.es_familia_gemellista) {
+      if (!formData.nombre_gemellista.trim() || !formData.cedula_gemellista.trim()) {
+        setMensaje({
+          tipo: 'error',
+          texto: 'Ingresa el nombre y la cédula de la Familia Gemellista para aplicar la tarifa especial.'
+        });
+        return;
+      }
+    }
+    
     try {
       setEnviando(true);
       const response = await reservasAPI.crear({ ...formData, horas: horasSeleccionadas });
@@ -429,6 +455,9 @@ const Home = () => {
         nombre_cliente: reservaBase.nombre_cliente,
         email_cliente: reservaBase.email_cliente,
         celular_cliente: reservaBase.celular_cliente,
+        es_familia_gemellista: reservaBase.es_familia_gemellista,
+        nombre_gemellista: reservaBase.nombre_gemellista,
+        cedula_gemellista: reservaBase.cedula_gemellista,
         fecha: reservaBase.fecha,
         horas: horasOrdenadas
       });
@@ -436,6 +465,9 @@ const Home = () => {
         nombre_cliente: '',
         email_cliente: '',
         celular_cliente: '',
+        es_familia_gemellista: false,
+        nombre_gemellista: '',
+        cedula_gemellista: '',
         fecha: formData.fecha,
         hora: obtenerHoraInicialDisponible(1, horarioDelDia.horas, horasDisponibles),
         duracion: 1
@@ -521,6 +553,17 @@ const Home = () => {
                     <p className="text-sm text-gray-600">{resumenReserva.email_cliente}</p>
                     <p className="text-sm text-gray-600">{resumenReserva.celular_cliente}</p>
                   </div>
+                  {resumenReserva.es_familia_gemellista && (
+                    <div className="rounded-lg border border-primary/40 bg-white p-3">
+                      <p className="text-xs uppercase text-primary font-semibold">Tarifa Familia Gemellista</p>
+                      <p className="text-sm text-gray-700">
+                        Nombre registrado: <span className="font-semibold">{resumenReserva.nombre_gemellista}</span>
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        Cédula: <span className="font-semibold">{resumenReserva.cedula_gemellista}</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -541,7 +584,9 @@ const Home = () => {
                       </p>
                       <p className="text-xs text-gray-600">
                         {horasParaPago.length
-                          ? `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} calculadas automáticamente según la tarifa vigente.`
+                          ? esFamiliaGemellistaSeleccionado
+                            ? `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} con tarifa especial Familia Gemellista.`
+                            : `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} calculadas automáticamente según la tarifa vigente.`
                           : 'Calcularemos el total cuando confirmes tu horario.'}
                       </p>
                     </div>
@@ -672,6 +717,78 @@ const Home = () => {
                 </div>
               </div>
 
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-gray-800 font-semibold">¿Eres parte de la Familia Gemellista?</p>
+                    <p className="text-sm text-gray-600">
+                      Si lo eres, comparte tu nombre y cédula para aplicar la tarifa especial.
+                    </p>
+                  </div>
+                  <div className="flex gap-4">
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <input
+                        type="radio"
+                        name="familia_gemellista"
+                        checked={!formData.es_familia_gemellista}
+                        onChange={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            es_familia_gemellista: false,
+                            nombre_gemellista: '',
+                            cedula_gemellista: ''
+                          }))
+                        }
+                        className="h-4 w-4 text-primary"
+                      />
+                      No
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <input
+                        type="radio"
+                        name="familia_gemellista"
+                        checked={formData.es_familia_gemellista}
+                        onChange={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            es_familia_gemellista: true
+                          }))
+                        }
+                        className="h-4 w-4 text-primary"
+                      />
+                      Sí, soy Familia Gemellista
+                    </label>
+                  </div>
+                </div>
+
+                {formData.es_familia_gemellista && (
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Nombre registrado</label>
+                      <input
+                        type="text"
+                        required={formData.es_familia_gemellista}
+                        value={formData.nombre_gemellista}
+                        onChange={(e) => setFormData({ ...formData, nombre_gemellista: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="Nombre completo del familiar"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Cédula</label>
+                      <input
+                        type="text"
+                        required={formData.es_familia_gemellista}
+                        value={formData.cedula_gemellista}
+                        onChange={(e) => setFormData({ ...formData, cedula_gemellista: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="Número de documento"
+                        inputMode="numeric"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
              <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 font-medium mb-2 flex items-center justify-between">
