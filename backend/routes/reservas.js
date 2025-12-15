@@ -71,6 +71,8 @@ const sanitizarEmail = (valor) => {
 
 const sanitizarHora = (valor) => sanitizarTexto(valor).slice(0, 5);
 
+const parseBoolean = (valor) => valor === true || valor === 'true' || valor === 1 || valor === '1';
+
 const ordenarHorasPorHorario = (horas, horario) =>
   horas.slice().sort((a, b) => horario.indexOf(a) - horario.indexOf(b));
 
@@ -145,6 +147,9 @@ router.post('/crear', async (req, res) => {
   try {
     const supabase = getSupabase();
     let { nombre_cliente, email_cliente, celular_cliente, fecha } = req.body;
+    const es_familia_gemellista = parseBoolean(req.body?.es_familia_gemellista);
+    const nombre_gemellista = sanitizarTexto(req.body?.nombre_gemellista);
+    const cedula_gemellista = sanitizarTexto(req.body?.cedula_gemellista);
 
     nombre_cliente = sanitizarTexto(nombre_cliente);
     email_cliente = sanitizarEmail(email_cliente);
@@ -170,6 +175,16 @@ router.post('/crear', async (req, res) => {
       return res.status(400).json({ error: 'Teléfono inválido' });
     }
 
+    if (es_familia_gemellista) {
+      if (!nombre_gemellista || nombre_gemellista.length < 3 || nombre_gemellista.length > 150) {
+        return res.status(400).json({ error: 'Nombre de la familia Gemellista inválido' });
+      }
+
+      if (!cedula_gemellista || !validator.isNumeric(cedula_gemellista) || cedula_gemellista.length < 4) {
+        return res.status(400).json({ error: 'Cédula inválida para verificación de familia Gemellista' });
+      }
+    }
+    
     if (!esFechaValida(fecha)) {
       return res.status(400).json({ error: 'Fecha es requerida y debe tener formato YYYY-MM-DD' });
     }
@@ -238,6 +253,9 @@ router.post('/crear', async (req, res) => {
       nombre_cliente,
       email_cliente,
       celular_cliente,
+      es_familia_gemellista,
+      nombre_gemellista: es_familia_gemellista ? nombre_gemellista : null,
+      cedula_gemellista: es_familia_gemellista ? cedula_gemellista : null,
       fecha,
       hora: horaSeleccionada,
       estado: 'Pendiente'
@@ -300,6 +318,9 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
     const email_cliente = sanitizarTexto(req.body?.email_cliente);
     const celular_cliente = sanitizarTexto(req.body?.celular_cliente);
     const fecha = sanitizarTexto(req.body?.fecha);
+    const es_familia_gemellista = parseBoolean(req.body?.es_familia_gemellista);
+    const nombre_gemellista = sanitizarTexto(req.body?.nombre_gemellista);
+    const cedula_gemellista = sanitizarTexto(req.body?.cedula_gemellista);
 
     const horasSolicitadas = Array.isArray(req.body?.horas)
       ? req.body.horas
@@ -315,6 +336,16 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       return res.status(400).json({ error: 'Fecha inválida. Usa formato YYYY-MM-DD.' });
     }
 
+    if (es_familia_gemellista) {
+      if (!nombre_gemellista || nombre_gemellista.length < 3 || nombre_gemellista.length > 150) {
+        return res.status(400).json({ error: 'Nombre de la familia Gemellista inválido' });
+      }
+
+      if (!cedula_gemellista || !validator.isNumeric(cedula_gemellista) || cedula_gemellista.length < 4) {
+        return res.status(400).json({ error: 'Cédula inválida para verificación de familia Gemellista' });
+      }
+    }
+    
     if (horasSolicitadas.length > MAX_HORAS_CONSECUTIVAS) {
       return res
         .status(400)
@@ -361,6 +392,9 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       nombre_cliente,
       email_cliente,
       celular_cliente,
+      es_familia_gemellista,
+      nombre_gemellista: es_familia_gemellista ? nombre_gemellista : null,
+      cedula_gemellista: es_familia_gemellista ? cedula_gemellista : null,
       fecha,
       hora: horaSeleccionada,
       estado: 'Pendiente',
