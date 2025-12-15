@@ -211,6 +211,8 @@ const Home = () => {
   const horasParaPago = resumenReserva?.horas || horasSeleccionadas;
   const fechaParaPago = resumenReserva?.fecha || formData.fecha;
   const estadoGemellista =
+    resumenReserva?.es_familia_gemellista || formData.es_familia_gemellista;
+  const estadoGemellista =
     resumenReserva?.estado_gemellista || (formData.es_familia_gemellista ? 'Pendiente' : 'No aplica');
   const tieneTarifaGemellistaActiva = estadoGemellista === 'Aprobado';
   const totalResumenReserva = calcularTotalReserva(
