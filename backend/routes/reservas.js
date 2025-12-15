@@ -15,6 +15,7 @@ const TIME_REGEX = /^\d{2}:\d{2}$/;
 const ESTADOS_VALIDOS = ['Pendiente', 'Jugado'];
 const METODOS_PAGO_VALIDOS = ['Nequi', 'Efectivo'];
 const MAX_HORAS_CONSECUTIVAS = 3;
+const ESTADOS_GEMELLISTA = ['No aplica', 'Pendiente', 'Aprobado', 'Rechazado'];
 
 const obtenerFechaActualColombia = () => new Date(
   new Date().toLocaleString('en-US', { timeZone: TIMEZONE_COLOMBIA })
@@ -248,6 +249,8 @@ router.post('/crear', async (req, res) => {
         .json({ error: `Ya existe una reserva para: ${horasOcupadas.join(', ')}` });
     }
 
+    const estado_gemellista = es_familia_gemellista ? 'Pendiente' : 'No aplica';
+    
     // Crear reservas múltiples (una por cada hora seleccionada)
     const reservasParaInsertar = horasOrdenadas.map((horaSeleccionada) => ({
       nombre_cliente,
@@ -256,6 +259,7 @@ router.post('/crear', async (req, res) => {
       es_familia_gemellista,
       nombre_gemellista: es_familia_gemellista ? nombre_gemellista : null,
       cedula_gemellista: es_familia_gemellista ? cedula_gemellista : null,
+      estado_gemellista,
       fecha,
       hora: horaSeleccionada,
       estado: 'Pendiente'
@@ -374,6 +378,8 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
     }
     
+    const estado_gemellista = es_familia_gemellista ? 'Pendiente' : 'No aplica';
+    
     // Verificar disponibilidad
     const { data: existentes, error: errorReservaExistente } = await supabase
       .from('reservas')
@@ -395,6 +401,7 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       es_familia_gemellista,
       nombre_gemellista: es_familia_gemellista ? nombre_gemellista : null,
       cedula_gemellista: es_familia_gemellista ? cedula_gemellista : null,
+      estado_gemellista,
       fecha,
       hora: horaSeleccionada,
       estado: 'Pendiente',
@@ -516,6 +523,58 @@ router.get('/:id', verificarToken, verificarRol('cancha', 'admin'), async (req, 
     res.json({ reserva: formatearReserva(data) });
   } catch (error) {
     return handleSupabaseError(res, error, 'Error al obtener la reserva', 'Error al obtener reserva:');
+  }
+});
+
+// Aprobar/Rechazar verificación de familia Gemellista (solo admin)
+router.patch('/:id/gemellista', verificarToken, verificarRol('admin'), async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { id } = req.params;
+    const estado = sanitizarTexto(req.body?.estado);
+
+    if (!esIdValido(id)) {
+      return res.status(400).json({ error: 'Identificador inválido' });
+    }
+
+    if (!estado || !ESTADOS_GEMELLISTA.includes(estado)) {
+      return res.status(400).json({ error: 'Estado de verificación inválido' });
+    }
+
+    const payload = { estado_gemellista: estado };
+
+    if (estado === 'Aprobado') {
+      payload.es_familia_gemellista = true;
+    }
+
+    if (estado === 'Rechazado' || estado === 'No aplica') {
+      payload.es_familia_gemellista = false;
+    }
+
+    const { data, error } = await supabase
+      .from('reservas')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error && error.code === 'PGRST116') {
+      return res.status(404).json({ error: 'Reserva no encontrada' });
+    }
+
+    if (error) throw error;
+
+    return res.json({
+      message: 'Estado de familia Gemellista actualizado',
+      reserva: formatearReserva(data)
+    });
+  } catch (error) {
+    return handleSupabaseError(
+      res,
+      error,
+      'Error al actualizar verificación de familia Gemellista',
+      'Error al actualizar verificación de familia Gemellista:'
+    );
   }
 });
 
