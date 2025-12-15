@@ -25,6 +25,7 @@ const DashboardAdmin = () => {
   const [reservaPagoSeleccionada, setReservaPagoSeleccionada] = useState(null);
   const [pagoForm, setPagoForm] = useState({ metodo_pago: 'Nequi', referencia_nequi: '' });
   const [registrandoPago, setRegistrandoPago] = useState(false);
+  const [procesandoGemellista, setProcesandoGemellista] = useState('');
 
   // Configuración de horarios
   const [horariosConfig, setHorariosConfig] = useState([]);
@@ -152,6 +153,24 @@ const DashboardAdmin = () => {
     }
   };
 
+  const actualizarEstadoGemellista = async (id, estado) => {
+    try {
+      setProcesandoGemellista(id);
+      await reservasAPI.actualizarGemellista(id, estado);
+      const texto =
+        estado === 'Aprobado'
+          ? 'Tarifa familiar aprobada'
+          : 'Se aplicará la tarifa general para esta reserva';
+      setMensaje({ tipo: 'success', texto });
+      cargarReservas();
+    } catch (error) {
+      console.error('Error al actualizar familia Gemellista:', error);
+      setMensaje({ tipo: 'error', texto: 'No pudimos actualizar la verificación de familia Gemellista' });
+    } finally {
+      setProcesandoGemellista('');
+    }
+  };
+  
   const eliminarReserva = async (id) => {
     if (!window.confirm('¿Estás seguro de eliminar esta reserva?')) return;
     
@@ -272,6 +291,13 @@ const DashboardAdmin = () => {
     { name: 'Pendientes', value: estadisticasGenerales.reservasPendientes }
   ] : [];
 
+  const getEstadoGemellistaStyles = (estado) => {
+    if (estado === 'Aprobado') return 'bg-green-100 text-green-800';
+    if (estado === 'Pendiente') return 'bg-yellow-100 text-yellow-800';
+    if (estado === 'Rechazado') return 'bg-red-100 text-red-700';
+    return 'bg-gray-100 text-gray-700';
+  };
+  
   return (
     <div className="min-h-screen bg-gray-50">
     {reservaPagoSeleccionada && (
@@ -798,6 +824,7 @@ const DashboardAdmin = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hora</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fam. Gemellista</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pago</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
@@ -818,6 +845,24 @@ const DashboardAdmin = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div className="font-medium">{reserva.hora}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {reserva.es_familia_gemellista ? (
+                              <div className="space-y-1">
+                                <span
+                                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                                    getEstadoGemellistaStyles(reserva.estado_gemellista)
+                                  }`}
+                                >
+                                  <span className="h-2 w-2 rounded-full bg-current opacity-75" />
+                                  {reserva.estado_gemellista || 'Pendiente'}
+                                </span>
+                                <p className="text-xs text-gray-700 font-semibold">{reserva.nombre_gemellista}</p>
+                                <p className="text-xs text-gray-500">CC: {reserva.cedula_gemellista}</p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-500">Tarifa general</span>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <span
@@ -846,6 +891,30 @@ const DashboardAdmin = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex flex-col gap-2">
+                              {reserva.es_familia_gemellista && (
+                                <div className="flex flex-col gap-2 border-b border-gray-200 pb-2">
+                                  {reserva.estado_gemellista !== 'Aprobado' && (
+                                    <button
+                                      onClick={() => actualizarEstadoGemellista(reserva.id, 'Aprobado')}
+                                      disabled={procesandoGemellista === reserva.id}
+                                      className="px-3 py-1 rounded bg-emerald-100 text-emerald-700 text-sm font-semibold hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {procesandoGemellista === reserva.id ? 'Guardando...' : 'Aprobar tarifa gemellista'}
+                                    </button>
+                                  )}
+                                  {reserva.estado_gemellista !== 'Rechazado' && reserva.estado_gemellista !== 'No aplica' && (
+                                    <button
+                                      onClick={() => actualizarEstadoGemellista(reserva.id, 'Rechazado')}
+                                      disabled={procesandoGemellista === reserva.id}
+                                      className="px-3 py-1 rounded bg-orange-100 text-orange-700 text-sm font-semibold hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {procesandoGemellista === reserva.id
+                                        ? 'Guardando...'
+                                        : 'Cobrar tarifa general'}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                               <button
                                 onClick={() => abrirModalPago(reserva)}
                                 className="px-3 py-1 rounded bg-secondary text-white text-sm hover:bg-blue-600"
