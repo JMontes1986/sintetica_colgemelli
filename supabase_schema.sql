@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS reservas (
   es_familia_gemellista BOOLEAN NOT NULL DEFAULT FALSE,
   nombre_gemellista TEXT,
   cedula_gemellista TEXT,
+  estado_gemellista TEXT NOT NULL DEFAULT 'No aplica'
+    CHECK (estado_gemellista IN ('No aplica', 'Pendiente', 'Aprobado', 'Rechazado')),
   fecha DATE NOT NULL,
   hora TIME NOT NULL,
   estado TEXT NOT NULL DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente', 'Jugado')),
@@ -39,7 +41,14 @@ ALTER TABLE IF EXISTS reservas
   ADD COLUMN IF NOT EXISTS pago_registrado BOOLEAN NOT NULL DEFAULT FALSE,
   ADD COLUMN IF NOT EXISTS es_familia_gemellista BOOLEAN NOT NULL DEFAULT FALSE,
   ADD COLUMN IF NOT EXISTS nombre_gemellista TEXT,
-  ADD COLUMN IF NOT EXISTS cedula_gemellista TEXT;
+  ADD COLUMN IF NOT EXISTS cedula_gemellista TEXT,
+  ADD COLUMN IF NOT EXISTS estado_gemellista TEXT NOT NULL DEFAULT 'No aplica'
+    CHECK (estado_gemellista IN ('No aplica', 'Pendiente', 'Aprobado', 'Rechazado'));
+
+-- Normalizar valores existentes
+UPDATE reservas
+SET estado_gemellista = COALESCE(estado_gemellista, 'No aplica')
+WHERE estado_gemellista IS NULL;
 
 -- 3. Configuración de horarios (rangos personalizados por fecha)
 CREATE TABLE IF NOT EXISTS configuracion_horarios (
