@@ -388,6 +388,7 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       .from('reservas')
       .select('hora')
       .eq('fecha', fecha)
+      .in('hora', horasOrdenadas);
 
     
     if (errorReservaExistente) throw errorReservaExistente;
