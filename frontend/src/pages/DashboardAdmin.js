@@ -285,6 +285,33 @@ const DashboardAdmin = () => {
     currency: 'COP',
     maximumFractionDigits: 0
   });
+
+  const esFinDeSemana = (fecha) => {
+    const fechaBase = new Date(fecha);
+    const diaSemana = fechaBase.getDay();
+
+    if (Number.isNaN(diaSemana)) return false;
+
+    return diaSemana === 0 || diaSemana === 6;
+  };
+
+  const calcularValorReserva = (reserva) => {
+    if (!reserva?.hora) return 0;
+
+    const horaEntera = parseInt(reserva.hora.slice(0, 2), 10);
+
+    if (Number.isNaN(horaEntera)) return 0;
+
+    const aplicaTarifaGemellista = reserva.estado_gemellista === 'Aprobado';
+
+    if (aplicaTarifaGemellista) {
+      return horaEntera >= 17 ? 110000 : 90000;
+    }
+
+    if (esFinDeSemana(reserva.fecha)) return 130000;
+
+    return horaEntera >= 17 ? 130000 : 100000;
+  };
   
   const dataPie = estadisticasGenerales ? [
     { name: 'Jugadas', value: estadisticasGenerales.reservasJugadas },
@@ -824,6 +851,7 @@ const DashboardAdmin = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hora</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fam. Gemellista</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pago</th>
@@ -845,6 +873,11 @@ const DashboardAdmin = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div className="font-medium">{reserva.hora}</div>
+                          </td>
+                        <td className="px-6 py-4">
+                            <div className="text-sm font-semibold text-gray-900">
+                              {currencyFormatter.format(calcularValorReserva(reserva))}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             {reserva.es_familia_gemellista ? (
