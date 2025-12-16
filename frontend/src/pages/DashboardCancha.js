@@ -22,7 +22,10 @@ const DashboardCancha = () => {
     email_cliente: '',
     celular_cliente: '',
     fecha: format(new Date(), 'yyyy-MM-dd'),
-    hora: '10:00'
+    hora: '10:00',
+    es_familia_gemellista: false,
+    nombre_gemellista: '',
+    cedula_gemellista: ''
   });
 
   const cargarReservas = useCallback(async () => {
@@ -65,7 +68,10 @@ const DashboardCancha = () => {
         email_cliente: '',
         celular_cliente: '',
         fecha: format(new Date(), 'yyyy-MM-dd'),
-        hora: '10:00'
+        hora: '10:00',
+        es_familia_gemellista: false,
+        nombre_gemellista: '',
+        cedula_gemellista: ''
       });
       cargarReservas();
     } catch (error) {
@@ -280,6 +286,38 @@ const DashboardCancha = () => {
                 onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
               />
+              <label className="flex items-center gap-3 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                <input
+                  type="checkbox"
+                  checked={formData.es_familia_gemellista}
+                  onChange={(e) => setFormData({ ...formData, es_familia_gemellista: e.target.checked })}
+                  className="h-5 w-5 text-primary focus:ring-primary"
+                />
+                <div>
+                  <p className="font-semibold text-gray-800">¿Familia Gemellista?</p>
+                  <p className="text-sm text-gray-600">Activa la verificación de tarifa especial para la reserva.</p>
+                </div>
+              </label>
+              {formData.es_familia_gemellista && (
+                <>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nombre de la familia Gemellista"
+                    value={formData.nombre_gemellista}
+                    onChange={(e) => setFormData({ ...formData, nombre_gemellista: e.target.value })}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                  />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Cédula para validar"
+                    value={formData.cedula_gemellista}
+                    onChange={(e) => setFormData({ ...formData, cedula_gemellista: e.target.value })}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                  />
+                </>
+              )}
               <button
                 type="submit"
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600 transition"
