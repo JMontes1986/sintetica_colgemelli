@@ -211,11 +211,9 @@ const Home = () => {
   const horasParaPago = resumenReserva?.horas || horasSeleccionadas;
   const fechaParaPago = resumenReserva?.fecha || formData.fecha;
   const esFamiliaGemellista = resumenReserva?.es_familia_gemellista || formData.es_familia_gemellista;
-  const estadoGemellista =
-    resumenReserva?.es_familia_gemellista || formData.es_familia_gemellista;
-  const estadoGemellista =
+  const estadoGemellistaActual =
     resumenReserva?.estado_gemellista || (formData.es_familia_gemellista ? 'Pendiente' : 'No aplica');
-  const tieneTarifaGemellistaActiva = estadoGemellista === 'Aprobado';
+  const tieneTarifaGemellistaActiva = estadoGemellistaActual === 'Aprobado';
   const totalResumenReserva = calcularTotalReserva(
     horasParaPago,
     fechaParaPago,
@@ -602,7 +600,7 @@ const Home = () => {
                       </p>
                       <p className="text-xs text-gray-600">
                         {horasParaPago.length
-                          ? esFamiliaGemellistaSeleccionado
+                          ? esFamiliaGemellista
                             ? `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} con tarifa especial Familia Gemellista.`
                             : `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} calculadas automáticamente según la tarifa vigente.`
                           : 'Calcularemos el total cuando confirmes tu horario.'}
