@@ -25,7 +25,10 @@ const esFechaValida = (valor) => Boolean(valor && DATE_REGEX.test(valor));
 
 const esHoraValida = (valor) => Boolean(valor && TIME_REGEX.test(valor));
 
-const esIdValido = (valor) => /^\d+$/.test(String(valor));
+const esIdValido = (valor) => {
+  const id = String(valor);
+  return validator.isUUID(id) || /^\d+$/.test(id);
+};
 
 const esHorarioEnElPasado = (fecha, hora) => {
   if (!fecha || !hora) return false;
