@@ -220,6 +220,9 @@ const Home = () => {
     tieneTarifaGemellistaActiva
   );
   const esDiaFestivoSeleccionado = esFestivoColombia(formData.fecha);
+  const fechaReservaFormateada = resumenReserva?.fecha
+    ? format(parseFechaLocal(resumenReserva.fecha), "EEEE d 'de' MMMM, yyyy", { locale: es })
+    : 'Fecha por confirmar';
   
   useEffect(() => {
     const horaSugerida = obtenerHoraInicialDisponible(formData.duracion, horarioDelDia.horas, horasDisponibles);
@@ -540,11 +543,7 @@ const Home = () => {
                 <div className="mt-4 space-y-3 rounded-xl bg-gray-50 p-4">
                   <div>
                     <p className="text-xs uppercase text-gray-500">Día</p>
-                    <p className="text-lg font-semibold text-gray-800">
-                      {resumenReserva.fecha
-                        ? format(parseFechaLocal(resumenReserva.fecha), "EEEE d 'de' MMMM, yyyy", { locale: es })
-                        : 'Fecha por confirmar'}
-                    </p>
+                    <p className="text-lg font-semibold text-gray-800">{fechaReservaFormateada}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -556,13 +555,16 @@ const Home = () => {
                     <div>
                       <p className="text-xs uppercase text-gray-500">Estado</p>
                       <p className="text-sm font-semibold text-green-700">Pendiente de pago</p>
+                      <p className="mt-1 text-xs text-gray-600">
+                        Realiza el pago con 2 días de anticipación a la fecha señalada ({fechaReservaFormateada}).
+                      </p>
                     </div>
                   </div>
                   <div className="space-y-1">
-                  <p className="text-xs uppercase text-gray-500">Reservado por</p>
-                  <p className="text-lg font-semibold text-gray-800">{resumenReserva.nombre_cliente}</p>
-                  <p className="text-sm text-gray-600">{resumenReserva.email_cliente}</p>
-                  <p className="text-sm text-gray-600">{resumenReserva.celular_cliente}</p>
+                    <p className="text-xs uppercase text-gray-500">Reservado por</p>
+                    <p className="text-lg font-semibold text-gray-800">{resumenReserva.nombre_cliente}</p>
+                    <p className="text-sm text-gray-600">{resumenReserva.email_cliente}</p>
+                    <p className="text-sm text-gray-600">{resumenReserva.celular_cliente}</p>
                 </div>
                 {resumenReserva.es_familia_gemellista && (
                   <div className="rounded-lg border border-primary/40 bg-white p-3">
