@@ -518,8 +518,14 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
     {resumenReserva && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black bg-opacity-50 px-4">
-          <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+        <div
+          className="fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-black bg-opacity-50 px-4 py-6 sm:items-center"
+          onClick={() => setResumenReserva(null)}
+        >
+          <div
+            className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setResumenReserva(null)}
               className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
@@ -527,7 +533,7 @@ const Home = () => {
             >
               ✕
             </button>
-            <div className="grid gap-6 p-8 md:grid-cols-2">
+            <div className="grid gap-6 p-6 md:p-8 md:grid-cols-2">
               <div>
                 <p className="text-sm font-semibold uppercase text-primary">Reserva creada</p>
                 <h2 className="mt-1 text-2xl font-bold text-gray-800">Detalles de tu reserva</h2>
