@@ -173,6 +173,15 @@ const DashboardAdmin = () => {
       setProcesandoGemellista('');
     }
   };
+
+  const esSolicitudGemellista = (reserva) =>
+    Boolean(
+      reserva.es_familia_gemellista ||
+        reserva.estado_gemellista === 'Pendiente' ||
+        reserva.estado_gemellista === 'Aprobado' ||
+        reserva.nombre_gemellista ||
+        reserva.cedula_gemellista
+    );
   
   const eliminarReserva = async (id) => {
     if (!window.confirm('¿Estás seguro de eliminar esta reserva?')) return;
@@ -899,6 +908,10 @@ const DashboardAdmin = () => {
                     <tbody className="divide-y divide-gray-200">
                       {reservas.map((reserva) => (
                         <tr key={reserva.id} className="hover:bg-gray-50">
+                          {(() => {
+                            const solicitudGemellista = esSolicitudGemellista(reserva);
+                            return (
+                              <>
                           <td className="px-6 py-4">
                             <div className="font-medium text-gray-900">{reserva.nombre_cliente}</div>
                           </td>
@@ -918,7 +931,7 @@ const DashboardAdmin = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            {reserva.es_familia_gemellista ? (
+                            {solicitudGemellista ? (
                               <div className="space-y-1">
                                 <span
                                   className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
@@ -928,8 +941,12 @@ const DashboardAdmin = () => {
                                   <span className="h-2 w-2 rounded-full bg-current opacity-75" />
                                   {reserva.estado_gemellista || 'Pendiente'}
                                 </span>
-                                <p className="text-xs text-gray-700 font-semibold">{reserva.nombre_gemellista}</p>
-                                <p className="text-xs text-gray-500">CC: {reserva.cedula_gemellista}</p>
+                                {reserva.nombre_gemellista && (
+                                  <p className="text-xs text-gray-700 font-semibold">{reserva.nombre_gemellista}</p>
+                                )}
+                                {reserva.cedula_gemellista && (
+                                  <p className="text-xs text-gray-500">CC: {reserva.cedula_gemellista}</p>
+                                )}
                               </div>
                             ) : (
                               <span className="text-xs text-gray-500">Tarifa general</span>
@@ -962,7 +979,7 @@ const DashboardAdmin = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex flex-col gap-2">
-                              {reserva.es_familia_gemellista && (
+                              {solicitudGemellista && (
                                 <div className="flex flex-col gap-2 border-b border-gray-200 pb-2">
                                   {reserva.estado_gemellista !== 'Aprobado' && (
                                     <button
@@ -1008,6 +1025,9 @@ const DashboardAdmin = () => {
                               </button>
                             </div>
                           </td>
+                              </>
+                            );
+                          })()}
                         </tr>
                       ))}
                     </tbody>
