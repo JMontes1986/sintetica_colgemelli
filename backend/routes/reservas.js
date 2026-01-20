@@ -151,7 +151,8 @@ router.post('/crear', async (req, res) => {
   try {
     const supabase = getSupabase();
     let { nombre_cliente, email_cliente, celular_cliente, fecha } = req.body;
-    const es_familia_gemellista = parseBoolean(req.body?.es_familia_gemellista);
+    const es_familia_gemellista_solicitado = parseBoolean(req.body?.es_familia_gemellista);
+    const es_familia_gemellista = req.usuario?.rol === 'admin' ? false : es_familia_gemellista_solicitado;
     const nombre_gemellista = sanitizarTexto(req.body?.nombre_gemellista);
     const cedula_gemellista = sanitizarTexto(req.body?.cedula_gemellista);
 
@@ -325,7 +326,8 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
     const email_cliente = sanitizarTexto(req.body?.email_cliente);
     const celular_cliente = sanitizarTexto(req.body?.celular_cliente);
     const fecha = sanitizarTexto(req.body?.fecha);
-    const es_familia_gemellista = parseBoolean(req.body?.es_familia_gemellista);
+    const es_familia_gemellista_solicitado = parseBoolean(req.body?.es_familia_gemellista);
+    const es_familia_gemellista = req.usuario?.rol === 'admin' ? false : es_familia_gemellista_solicitado;
     const nombre_gemellista = sanitizarTexto(req.body?.nombre_gemellista);
     const cedula_gemellista = sanitizarTexto(req.body?.cedula_gemellista);
 
