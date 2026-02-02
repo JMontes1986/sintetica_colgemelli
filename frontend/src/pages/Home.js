@@ -22,7 +22,7 @@ const DEFAULT_HORARIO = {
 
 const DURACION_MAXIMA = 3;
 
-const NEQUI_PAYMENT_NUMBER = '320 376 8582';
+const NEQUI_PAYMENT_NUMBER = '3203768582';
 const NEQUI_QR_LINK =
   process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/573128817505?text=Hola,%20quiero%20pagar%20mi%20reserva';
 const NEQUI_QR_IMAGE_URL =
