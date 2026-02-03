@@ -24,9 +24,6 @@ const DURACION_MAXIMA = 3;
 
 const NEQUI_PAYMENT_NUMBER = '3203768582';
 const NEQUI_QR_LINK = process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/qr/2HN5E6CD2BRNJ1';
-const NEQUI_QR_IMAGE_URL =
-  process.env.REACT_APP_NEQUI_QR_IMAGE_URL ||
-  'https://chart.googleapis.com/chart?chs=600x600&cht=qr&chl=https%3A%2F%2Fwa.me%2Fqr%2F2HN5E6CD2BRNJ1';
 
 const parseFechaLocal = (fecha) => {
   if (!fecha) return new Date();
@@ -618,7 +615,10 @@ const Home = () => {
                 </div>
                 <div className="mt-4 flex flex-col items-center gap-3 rounded-lg bg-white p-4 shadow">
                   <img
-                    src={NEQUI_QR_IMAGE_URL}
+                    src={
+                      process.env.REACT_APP_NEQUI_QR_IMAGE_URL ||
+                      'https://chart.googleapis.com/chart?chs=600x600&cht=qr&chl=https%3A%2F%2Fwa.me%2Fqr%2F2HN5E6CD2BRNJ1'
+                    }
                     alt="Código QR para pagar tu reserva con Nequi"
                     className="h-48 w-48 rounded-lg border border-gray-200 object-contain"
                   />
