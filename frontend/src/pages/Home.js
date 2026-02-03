@@ -24,6 +24,12 @@ const DURACION_MAXIMA = 3;
 
 const NEQUI_PAYMENT_NUMBER = '3203768582';
 const NEQUI_QR_LINK = process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/qr/2HN5E6CD2BRNJ1';
+const NEQUI_QR_IMAGE_URL =
+  process.env.REACT_APP_NEQUI_QR_IMAGE_URL ||
+  'https://chart.googleapis.com/chart?chs=600x600&cht=qr&chl=https%3A%2F%2Fwa.me%2Fqr%2F2HN5E6CD2BRNJ1';
+const NEQUI_QR_IMAGE_FALLBACK_URL =
+  process.env.REACT_APP_NEQUI_QR_IMAGE_FALLBACK_URL ||
+  'https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=https%3A%2F%2Fwa.me%2Fqr%2F2HN5E6CD2BRNJ1';
 
 const parseFechaLocal = (fecha) => {
   if (!fecha) return new Date();
@@ -185,6 +191,7 @@ const Home = () => {
   const [cargandoDias, setCargandoDias] = useState(true);
   const [errorDias, setErrorDias] = useState('');
   const [resumenReserva, setResumenReserva] = useState(null);
+  const [qrImageSrc, setQrImageSrc] = useState(NEQUI_QR_IMAGE_URL);
   const [disponibilidadCache, setDisponibilidadCache] = useState({
     [today]: {
       horasDisponibles: DEFAULT_HORARIO.horas,
@@ -615,12 +622,14 @@ const Home = () => {
                 </div>
                 <div className="mt-4 flex flex-col items-center gap-3 rounded-lg bg-white p-4 shadow">
                   <img
-                    src={
-                      process.env.REACT_APP_NEQUI_QR_IMAGE_URL ||
-                      'https://chart.googleapis.com/chart?chs=600x600&cht=qr&chl=https%3A%2F%2Fwa.me%2Fqr%2F2HN5E6CD2BRNJ1'
-                    }
+                    src={qrImageSrc}
                     alt="Código QR para pagar tu reserva con Nequi"
                     className="h-48 w-48 rounded-lg border border-gray-200 object-contain"
+                      onError={() => {
+                      if (qrImageSrc !== NEQUI_QR_IMAGE_FALLBACK_URL) {
+                        setQrImageSrc(NEQUI_QR_IMAGE_FALLBACK_URL);
+                      }
+                    }}
                   />
                   <p className="text-center text-sm text-gray-700">
                     Escanea el código o usa el número <span className="font-semibold">{NEQUI_PAYMENT_NUMBER}</span> para
