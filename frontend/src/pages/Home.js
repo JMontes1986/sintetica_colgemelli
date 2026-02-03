@@ -23,10 +23,10 @@ const DEFAULT_HORARIO = {
 const DURACION_MAXIMA = 3;
 
 const NEQUI_PAYMENT_NUMBER = '3203768582';
-const NEQUI_QR_LINK =
-  process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/573128817505?text=Hola,%20quiero%20pagar%20mi%20reserva';
+const NEQUI_QR_LINK = process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/qr/2HN5E6CD2BRNJ1';
 const NEQUI_QR_IMAGE_URL =
-  'https://hfgdlgapdossqycsjzgs.supabase.co/storage/v1/object/sign/imagen/QR%20Nequi.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84OTQzMDZkYi1lNjJmLTQ1MmItYmM1ZS1mNGY4NTlmMGY5YTQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpbWFnZW4vUVIgTmVxdWkuanBnIiwiaWF0IjoxNzY1NTY5MzA4LCJleHAiOjE3OTcxMDUzMDh9.YsolxY582xMaRPVjnXzUrWX5SDWsjuqbCnpLY2uXH70';
+  process.env.REACT_APP_NEQUI_QR_IMAGE_URL ||
+  'https://chart.googleapis.com/chart?chs=600x600&cht=qr&chl=https%3A%2F%2Fwa.me%2Fqr%2F2HN5E6CD2BRNJ1';
 
 const parseFechaLocal = (fecha) => {
   if (!fecha) return new Date();
