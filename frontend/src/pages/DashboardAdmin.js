@@ -879,134 +879,136 @@ const DashboardAdmin = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fam. Gemellista</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pago</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {reservas.map((reserva) => (
-                        <tr key={reserva.id} className="hover:bg-gray-50">
-                          {(() => {
-                            const solicitudGemellista = esSolicitudGemellista(reserva);
-                            return (
-                              <>
-                          <td className="px-6 py-4">
-                            <div className="font-medium text-gray-900">{reserva.nombre_cliente}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-600">{reserva.email_cliente}</div>
-                            <div className="text-sm text-gray-500">{reserva.celular_cliente}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm">{format(new Date(reserva.fecha), "dd/MM/yyyy")}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="font-medium">{reserva.hora}</div>
-                          </td>
-                        <td className="px-6 py-4">
-                            <div className="text-sm font-semibold text-gray-900">
-                              {currencyFormatter.format(calcularValorReserva(reserva))}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            {solicitudGemellista ? (
-                              <div className="space-y-1">
+                      {reservas.map((reserva) => {
+                        const solicitudGemellista = esSolicitudGemellista(reserva);
+                        return (
+                          <React.Fragment key={reserva.id}>
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-6 py-4">
+                                <div className="font-medium text-gray-900">{reserva.nombre_cliente}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-sm text-gray-600">{reserva.email_cliente}</div>
+                                <div className="text-sm text-gray-500">{reserva.celular_cliente}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-sm">{format(new Date(reserva.fecha), 'dd/MM/yyyy')}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="font-medium">{reserva.hora}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {currencyFormatter.format(calcularValorReserva(reserva))}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                {solicitudGemellista ? (
+                                  <div className="space-y-1">
+                                    <span
+                                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                                        getEstadoGemellistaStyles(reserva.estado_gemellista)
+                                      }`}
+                                    >
+                                      <span className="h-2 w-2 rounded-full bg-current opacity-75" />
+                                      {reserva.estado_gemellista || 'Pendiente'}
+                                    </span>
+                                    {reserva.nombre_gemellista && (
+                                      <p className="text-xs text-gray-700 font-semibold">{reserva.nombre_gemellista}</p>
+                                    )}
+                                    {reserva.cedula_gemellista && (
+                                      <p className="text-xs text-gray-500">CC: {reserva.cedula_gemellista}</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-500">Tarifa general</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4">
                                 <span
-                                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-                                    getEstadoGemellistaStyles(reserva.estado_gemellista)
+                                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                    reserva.estado === 'Jugado'
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-yellow-100 text-yellow-800'
                                   }`}
                                 >
-                                  <span className="h-2 w-2 rounded-full bg-current opacity-75" />
-                                  {reserva.estado_gemellista || 'Pendiente'}
+                                  {reserva.estado}
                                 </span>
-                                {reserva.nombre_gemellista && (
-                                  <p className="text-xs text-gray-700 font-semibold">{reserva.nombre_gemellista}</p>
+                                </td>
+                              <td className="px-6 py-4">
+                                {reserva.pago_registrado ? (
+                                  <div className="text-sm text-gray-800">
+                                    <p className="font-semibold">{reserva.metodo_pago}</p>
+                                    {reserva.metodo_pago === 'Nequi' && reserva.referencia_nequi && (
+                                      <p className="text-xs text-gray-500">Ref: {reserva.referencia_nequi}</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                                    Pendiente
+                                  </span>
                                 )}
-                                {reserva.cedula_gemellista && (
-                                  <p className="text-xs text-gray-500">CC: {reserva.cedula_gemellista}</p>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-gray-500">Tarifa general</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                reserva.estado === 'Jugado'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}
-                            >
-                              {reserva.estado}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            {reserva.pago_registrado ? (
-                              <div className="text-sm text-gray-800">
-                                <p className="font-semibold">{reserva.metodo_pago}</p>
-                                {reserva.metodo_pago === 'Nequi' && reserva.referencia_nequi && (
-                                  <p className="text-xs text-gray-500">Ref: {reserva.referencia_nequi}</p>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-                                Pendiente
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col gap-2">
-                              {solicitudGemellista && (
-                                <div className="flex flex-col gap-2 border-b border-gray-200 pb-2">
-                                  {reserva.estado_gemellista !== 'Aprobado' && (
+                              </td>
+                            </tr>
+                            <tr className="bg-gray-50">
+                              <td className="px-6 py-4" colSpan={8}>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {solicitudGemellista && (
+                                    <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2 w-full">
+                                      {reserva.estado_gemellista !== 'Aprobado' && (
+                                        <button
+                                          onClick={() => actualizarEstadoGemellista(reserva.id, 'Aprobado')}
+                                          disabled={procesandoGemellista === reserva.id}
+                                          className="px-3 py-1 rounded bg-emerald-100 text-emerald-700 text-sm font-semibold hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                          {procesandoGemellista === reserva.id
+                                            ? 'Guardando...'
+                                            : 'Aprobar tarifa gemellista'}
+                                        </button>
+                                      )}
+                                      {reserva.estado_gemellista !== 'Rechazado' &&
+                                        reserva.estado_gemellista !== 'No aplica' && (
+                                          <button
+                                            onClick={() => actualizarEstadoGemellista(reserva.id, 'Rechazado')}
+                                            disabled={procesandoGemellista === reserva.id}
+                                            className="px-3 py-1 rounded bg-orange-100 text-orange-700 text-sm font-semibold hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                            {procesandoGemellista === reserva.id
+                                              ? 'Guardando...'
+                                              : 'Cobrar tarifa general'}
+                                          </button>
+                                        )}
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={() => abrirModalPago(reserva)}
+                                    className="px-3 py-1 rounded bg-secondary text-white text-sm hover:bg-blue-600"
+                                  >
+                                    {reserva.pago_registrado ? 'Actualizar pago' : 'Registrar pago'}
+                                  </button>
+                                  {reserva.estado === 'Pendiente' && (
                                     <button
-                                      onClick={() => actualizarEstadoGemellista(reserva.id, 'Aprobado')}
-                                      disabled={procesandoGemellista === reserva.id}
-                                      className="px-3 py-1 rounded bg-emerald-100 text-emerald-700 text-sm font-semibold hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                      onClick={() => cambiarEstado(reserva.id, 'Jugado')}
+                                      className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
                                     >
-                                      {procesandoGemellista === reserva.id ? 'Guardando...' : 'Aprobar tarifa gemellista'}
+                                      ✓ Jugado
                                     </button>
                                   )}
-                                  {reserva.estado_gemellista !== 'Rechazado' && reserva.estado_gemellista !== 'No aplica' && (
-                                    <button
-                                      onClick={() => actualizarEstadoGemellista(reserva.id, 'Rechazado')}
-                                      disabled={procesandoGemellista === reserva.id}
-                                      className="px-3 py-1 rounded bg-orange-100 text-orange-700 text-sm font-semibold hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                      {procesandoGemellista === reserva.id
-                                        ? 'Guardando...'
-                                        : 'Cobrar tarifa general'}
-                                    </button>
-                                  )}
+                                  <button
+                                    onClick={() => eliminarReserva(reserva.id)}
+                                    className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                                  >
+                                    🗑 Eliminar
+                                  </button>
                                 </div>
-                              )}
-                              <button
-                                onClick={() => abrirModalPago(reserva)}
-                                className="px-3 py-1 rounded bg-secondary text-white text-sm hover:bg-blue-600"
-                              >
-                                {reserva.pago_registrado ? 'Actualizar pago' : 'Registrar pago'}
-                              </button>
-                              {reserva.estado === 'Pendiente' && (
-                                <button
-                                  onClick={() => cambiarEstado(reserva.id, 'Jugado')}
-                                  className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
-                                >
-                                  ✓ Jugado
-                                </button>
-                              )}
-                              <button
-                                onClick={() => eliminarReserva(reserva.id)}
-                                className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                              >
-                                🗑 Eliminar
-                              </button>
-                            </div>
-                          </td>
-                              </>
-                            );
-                          })()}
-                        </tr>
-                      ))}
+                              </td>
+                            </tr>
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
