@@ -16,6 +16,8 @@ const ESTADOS_VALIDOS = ['Pendiente', 'Jugado'];
 const METODOS_PAGO_VALIDOS = ['Nequi', 'Efectivo'];
 const MAX_HORAS_CONSECUTIVAS = 3;
 const ESTADOS_GEMELLISTA = ['No aplica', 'Pendiente', 'Aprobado', 'Rechazado'];
+const MAX_SEMANAS_RECURRENTES = 52;
+const DIAS_SEMANA_VALIDOS = new Set([0, 1, 2, 3, 4, 5, 6]);
 
 const obtenerFechaActualColombia = () => new Date(
   new Date().toLocaleString('en-US', { timeZone: TIMEZONE_COLOMBIA })
@@ -76,6 +78,40 @@ const sanitizarEmail = (valor) => {
 const sanitizarHora = (valor) => sanitizarTexto(valor).slice(0, 5);
 
 const parseBoolean = (valor) => valor === true || valor === 'true' || valor === 1 || valor === '1';
+
+const parseNumeroEntero = (valor, valorPorDefecto = 1) => {
+  const numero = Number.parseInt(valor, 10);
+  return Number.isNaN(numero) ? valorPorDefecto : numero;
+};
+
+const construirFechasRecurrentes = ({ fechaBase, diasSemana, semanas }) => {
+  const fechaInicial = new Date(`${fechaBase}T00:00:00${TIMEZONE_OFFSET_COLOMBIA}`);
+
+  if (Number.isNaN(fechaInicial.getTime())) {
+    return [];
+  }
+
+  const diaInicial = fechaInicial.getDay();
+  const diasSeleccionados = diasSemana.length ? diasSemana : [diaInicial];
+  const inicioSemana = new Date(fechaInicial);
+  inicioSemana.setDate(fechaInicial.getDate() - diaInicial);
+
+  const fechasSet = new Set();
+
+  for (let semana = 0; semana < semanas; semana += 1) {
+    diasSeleccionados.forEach((diaSemana) => {
+      const fecha = new Date(inicioSemana);
+      fecha.setDate(inicioSemana.getDate() + (semana * 7) + diaSemana);
+
+      const fechaFormateada = fecha.toISOString().slice(0, 10);
+      if (fechaFormateada >= fechaBase) {
+        fechasSet.add(fechaFormateada);
+      }
+    });
+  }
+
+  return Array.from(fechasSet).sort((a, b) => a.localeCompare(b));
+};
 
 const ordenarHorasPorHorario = (horas, horario) =>
   horas.slice().sort((a, b) => horario.indexOf(a) - horario.indexOf(b));
@@ -327,6 +363,11 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
     const celular_cliente = sanitizarTexto(req.body?.celular_cliente);
     const fecha = sanitizarTexto(req.body?.fecha);
     const es_familia_gemellista_solicitado = parseBoolean(req.body?.es_familia_gemellista);
+    const reservaRecurrente = parseBoolean(req.body?.reserva_recurrente);
+    const semanasRepeticion = parseNumeroEntero(req.body?.semanas_repeticion, 1);
+    const diasSemanaSolicitados = Array.isArray(req.body?.dias_semana)
+      ? req.body.dias_semana.map((dia) => Number.parseInt(dia, 10)).filter((dia) => DIAS_SEMANA_VALIDOS.has(dia))
+      : [];
     const es_familia_gemellista = req.usuario?.rol === 'admin' ? false : es_familia_gemellista_solicitado;
     const nombre_gemellista = sanitizarTexto(req.body?.nombre_gemellista);
     const cedula_gemellista = sanitizarTexto(req.body?.cedula_gemellista);
@@ -345,6 +386,10 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       return res.status(400).json({ error: 'Fecha inválida. Usa formato YYYY-MM-DD.' });
     }
 
+    if (reservaRecurrente && (semanasRepeticion < 1 || semanasRepeticion > MAX_SEMANAS_RECURRENTES)) {
+      return res.status(400).json({ error: `Puedes programar entre 1 y ${MAX_SEMANAS_RECURRENTES} semanas.` });
+    }
+    
     if (es_familia_gemellista) {
       if (!nombre_gemellista || nombre_gemellista.length < 3 || nombre_gemellista.length > 150) {
         return res.status(400).json({ error: 'Nombre de la familia Gemellista inválido' });
@@ -367,59 +412,82 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
       return res.status(400).json({ error: 'Hora inválida. Usa formato HH:mm.' });
     }
     
-    const horarioDelDia = await obtenerHorarioPorFecha(supabase, fecha);
+    const horarioFechaBase = await obtenerHorarioPorFecha(supabase, fecha);
 
-    if (!horasNormalizadas.every((hora) => horarioDelDia.horas.includes(hora))) {
+    if (!horasNormalizadas.every((hora) => horarioFechaBase.horas.includes(hora))) {
       return res.status(400).json({ error: 'La cancha no está habilitada para ese horario.' });
     }
 
-    const horasOrdenadas = ordenarHorasPorHorario(horasNormalizadas, horarioDelDia.horas);
+    const horasOrdenadas = ordenarHorasPorHorario(horasNormalizadas, horarioFechaBase.horas);
 
-    if (!sonHorasConsecutivas(horasOrdenadas, horarioDelDia.horas)) {
+    if (!sonHorasConsecutivas(horasOrdenadas, horarioFechaBase.horas)) {
       return res.status(400).json({ error: 'Las horas seleccionadas deben ser consecutivas.' });
     }
 
-    if (horasOrdenadas.some((horaSeleccionada) => esHorarioEnElPasado(fecha, horaSeleccionada))) {
-      return res.status(400).json({ error: 'No puedes reservar para una hora que ya pasó' });
+    const fechasReserva = reservaRecurrente
+      ? construirFechasRecurrentes({
+        fechaBase: fecha,
+        diasSemana: [...new Set(diasSemanaSolicitados)],
+        semanas: semanasRepeticion
+      })
+      : [fecha];
+
+    if (!fechasReserva.length) {
+      return res.status(400).json({ error: 'No hay fechas válidas para la recurrencia seleccionada.' });
     }
     
     const estado_gemellista = es_familia_gemellista ? 'Pendiente' : 'No aplica';
     
     // Verificar disponibilidad
-    const { data: existentes, error: errorReservaExistente } = await supabase
-      .from('reservas')
-      .select('hora')
-      .eq('fecha', fecha)
-      .in('hora', horasOrdenadas);
-
+    for (const fechaReserva of fechasReserva) {
+      const horarioDelDia = await obtenerHorarioPorFecha(supabase, fechaReserva);
     
-    if (errorReservaExistente) throw errorReservaExistente;
+    if (!horasOrdenadas.every((hora) => horarioDelDia.horas.includes(hora))) {
+        return res.status(400).json({ error: `La cancha no está habilitada en ${fechaReserva} para uno de los horarios seleccionados.` });
+      }
 
-    if (existentes?.length) {
-      const horasOcupadas = existentes.map((reserva) => normalizarHora(reserva.hora));
-      return res.status(400).json({ error: `Ya existe una reserva para: ${horasOcupadas.join(', ')}` });
+    if (horasOrdenadas.some((horaSeleccionada) => esHorarioEnElPasado(fechaReserva, horaSeleccionada))) {
+        return res.status(400).json({ error: `No puedes reservar para una hora que ya pasó (${fechaReserva})` });
+      }
+
+      const { data: existentes, error: errorReservaExistente } = await supabase
+        .from('reservas')
+        .select('hora')
+        .eq('fecha', fechaReserva)
+        .in('hora', horasOrdenadas);
+
+      if (errorReservaExistente) throw errorReservaExistente;
+
+      if (existentes?.length) {
+        const horasOcupadas = existentes.map((reserva) => normalizarHora(reserva.hora));
+        return res.status(400).json({ error: `Ya existe una reserva para ${fechaReserva}: ${horasOcupadas.join(', ')}` });
+      }
     }
 
-    const reservasParaInsertar = horasOrdenadas.map((horaSeleccionada) => ({
-      nombre_cliente,
-      email_cliente,
-      celular_cliente,
-      es_familia_gemellista,
-      nombre_gemellista: es_familia_gemellista ? nombre_gemellista : null,
-      cedula_gemellista: es_familia_gemellista ? cedula_gemellista : null,
-      estado_gemellista,
-      fecha,
-      hora: horaSeleccionada,
-      estado: 'Pendiente',
-      creado_por: req.usuario.id
-    }));
+    const reservasParaInsertar = fechasReserva.flatMap((fechaReserva) =>
+      horasOrdenadas.map((horaSeleccionada) => ({
+        nombre_cliente,
+        email_cliente,
+        celular_cliente,
+        es_familia_gemellista,
+        nombre_gemellista: es_familia_gemellista ? nombre_gemellista : null,
+        cedula_gemellista: es_familia_gemellista ? cedula_gemellista : null,
+        estado_gemellista,
+        fecha: fechaReserva,
+        hora: horaSeleccionada,
+        estado: 'Pendiente',
+        creado_por: req.usuario.id
+      }))
+    );
 
     const { data, error } = await supabase.from('reservas').insert(reservasParaInsertar).select();
     
     if (error) throw error;
 
     res.status(201).json({
-      message: 'Reserva creada exitosamente',
+      message: reservaRecurrente
+        ? `Reservas creadas exitosamente (${reservasParaInsertar.length} horarios en ${fechasReserva.length} días)`
+        : 'Reserva creada exitosamente',
       reservas: (data || []).map(formatearReserva)
     });
   } catch (error) {
