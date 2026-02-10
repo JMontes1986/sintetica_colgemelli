@@ -6,6 +6,16 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+const DIAS_SEMANA = [
+  { value: 1, label: 'Lunes' },
+  { value: 2, label: 'Martes' },
+  { value: 3, label: 'Miércoles' },
+  { value: 4, label: 'Jueves' },
+  { value: 5, label: 'Viernes' },
+  { value: 6, label: 'Sábado' },
+  { value: 0, label: 'Domingo' }
+];
+
 const DashboardAdmin = () => {
   const navigate = useNavigate();
   const { usuario, logout } = useAuth();
@@ -52,6 +62,9 @@ const DashboardAdmin = () => {
     celular_cliente: '',
     fecha: format(new Date(), 'yyyy-MM-dd'),
     hora: '10:00',
+    reserva_recurrente: false,
+    semanas_repeticion: 1,
+    dias_semana: [4, 5],
     es_familia_gemellista: false,
     nombre_gemellista: '',
     cedula_gemellista: ''
@@ -234,6 +247,8 @@ const DashboardAdmin = () => {
     try {
       await reservasAPI.crearManual({
         ...formData,
+        semanas_repeticion: Number(formData.semanas_repeticion) || 1,
+        dias_semana: formData.reserva_recurrente ? formData.dias_semana : [],
         es_familia_gemellista: false,
         nombre_gemellista: '',
         cedula_gemellista: ''
@@ -246,6 +261,9 @@ const DashboardAdmin = () => {
         celular_cliente: '',
         fecha: format(new Date(), 'yyyy-MM-dd'),
         hora: '10:00',
+        reserva_recurrente: false,
+        semanas_repeticion: 1,
+        dias_semana: [4, 5],
         es_familia_gemellista: false,
         nombre_gemellista: '',
         cedula_gemellista: ''
@@ -294,6 +312,15 @@ const DashboardAdmin = () => {
     }
   };
 
+  const toggleDiaSemana = (dia) => {
+    setFormData((prev) => {
+      const actual = prev.dias_semana || [];
+      const yaExiste = actual.includes(dia);
+      const dias_semana = yaExiste ? actual.filter((valor) => valor !== dia) : [...actual, dia];
+      return { ...prev, dias_semana };
+    });
+  };
+  
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -715,6 +742,50 @@ const DashboardAdmin = () => {
                     onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
                   />
+                  <label className="flex items-center gap-3 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 md:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.reserva_recurrente}
+                      onChange={(e) => setFormData({ ...formData, reserva_recurrente: e.target.checked })}
+                      className="h-5 w-5 text-primary focus:ring-primary"
+                    />
+                    <div>
+                      <p className="font-semibold text-gray-800">Reserva recurrente semanal</p>
+                      <p className="text-sm text-gray-600">Ejemplo: separar jueves y viernes por varias semanas.</p>
+                    </div>
+                  </label>
+                  {formData.reserva_recurrente && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Semanas a programar</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="52"
+                          required
+                          value={formData.semanas_repeticion}
+                          onChange={(e) => setFormData({ ...formData, semanas_repeticion: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <p className="block text-sm font-medium text-gray-700 mb-2">Días por semana</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {DIAS_SEMANA.map((dia) => (
+                            <label key={dia.value} className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                              <input
+                                type="checkbox"
+                                checked={(formData.dias_semana || []).includes(dia.value)}
+                                onChange={() => toggleDiaSemana(dia.value)}
+                                className="h-4 w-4 text-primary focus:ring-primary"
+                              />
+                              <span>{dia.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                   <div className="md:col-span-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600">
                     La verificación de familia Gemellista se gestiona después desde la reserva; el administrador solo
                     autoriza o rechaza la solicitud.
