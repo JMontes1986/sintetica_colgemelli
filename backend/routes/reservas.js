@@ -179,6 +179,10 @@ const handleSupabaseError = (res, error, defaultMessage, logContext) => {
     return res.status(503).json({ error: error.message });
   }
 
+  if (error.code === '23514') {
+    return res.status(400).json({ error: 'La actualización no cumple las reglas de la base de datos.' });
+  }
+  
   return res.status(500).json({ error: defaultMessage });
 };
 
@@ -683,6 +687,10 @@ router.patch('/:id/estado', verificarToken, verificarRol('cancha', 'admin'), asy
       .select()
       .single();
 
+    if (error && error.code === 'PGRST116') {
+      return res.status(404).json({ error: 'Reserva no encontrada' });
+    }
+    
     if (error) throw error;
 
     res.json({
