@@ -685,6 +685,81 @@ router.patch('/:id/estado', verificarToken, verificarRol('cancha', 'admin'), asy
   }
 });
 
+// Reprogramar fecha/hora de reserva (cancha y admin)
+router.patch('/:id/reprogramar', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { id } = req.params;
+    const fecha = sanitizarTexto(req.body?.fecha);
+    const hora = sanitizarHora(req.body?.hora);
+
+    if (!esIdValido(id)) {
+      return res.status(400).json({ error: 'Identificador inválido' });
+    }
+
+    if (!esFechaValida(fecha)) {
+      return res.status(400).json({ error: 'Fecha inválida. Usa formato YYYY-MM-DD.' });
+    }
+
+    if (!esHoraValida(hora)) {
+      return res.status(400).json({ error: 'Hora inválida. Usa formato HH:mm.' });
+    }
+
+    const { data: reservaActual, error: errorReservaActual } = await supabase
+      .from('reservas')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (errorReservaActual && errorReservaActual.code === 'PGRST116') {
+      return res.status(404).json({ error: 'Reserva no encontrada' });
+    }
+
+    if (errorReservaActual) throw errorReservaActual;
+    if (!reservaActual) return res.status(404).json({ error: 'Reserva no encontrada' });
+
+    const horarioDelDia = await obtenerHorarioPorFecha(supabase, fecha);
+
+    if (!horarioDelDia.horas.includes(hora)) {
+      return res.status(400).json({ error: 'La cancha no está habilitada para ese horario.' });
+    }
+
+    if (esHorarioEnElPasado(fecha, hora)) {
+      return res.status(400).json({ error: 'No puedes mover la reserva a una hora que ya pasó' });
+    }
+
+    const { data: conflicto, error: errorConflicto } = await supabase
+      .from('reservas')
+      .select('id')
+      .eq('fecha', fecha)
+      .eq('hora', hora)
+      .neq('id', id)
+      .limit(1);
+
+    if (errorConflicto) throw errorConflicto;
+
+    if (conflicto?.length) {
+      return res.status(400).json({ error: 'Ya existe una reserva para esa fecha y hora.' });
+    }
+
+    const { data, error } = await supabase
+      .from('reservas')
+      .update({ fecha, hora })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.json({
+      message: 'Reserva reprogramada exitosamente',
+      reserva: formatearReserva(data)
+    });
+  } catch (error) {
+    return handleSupabaseError(res, error, 'Error al reprogramar la reserva', 'Error al reprogramar reserva:');
+  }
+});
+
 // Registrar método de pago (cancha y admin)
 router.patch('/:id/pago', verificarToken, verificarRol('cancha', 'admin'), async (req, res) => {
   try {
