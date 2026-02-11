@@ -460,7 +460,7 @@ const Home = () => {
         (a, b) => (horarioDelDia.horas || []).indexOf(a) - (horarioDelDia.horas || []).indexOf(b)
       );
       const fechaLegible = format(parseFechaLocal(formData.fecha), "dd 'de' MMMM, yyyy", { locale: es });
-      const texto = `¡Reserva creada! Te esperamos el ${fechaLegible} de ${formatearRangoHoras(horasOrdenadas)}.`;
+      const texto = `¡Reserva creada! Tu solicitud quedó pendiente de aprobación del administrador o la cancha. Te esperamos el ${fechaLegible} de ${formatearRangoHoras(horasOrdenadas)}.`;
       setMensaje({ tipo: 'exito', texto });
       setResumenReserva({
         nombre_cliente: reservaBase.nombre_cliente,
@@ -558,7 +558,10 @@ const Home = () => {
                     </div>
                     <div>
                       <p className="text-xs uppercase text-gray-500">Estado</p>
-                      <p className="text-sm font-semibold text-green-700">Pendiente de pago</p>
+                      <p className="text-sm font-semibold text-blue-700">Pendiente de aprobación</p>
+                      <p className="mt-1 text-xs text-gray-600">
+                        Un administrador o encargado de cancha debe aprobar tu reserva antes de confirmarla.
+                      </p>
                       <p className="mt-1 text-xs text-gray-600">
                         Realiza el pago con 2 días de anticipación a la fecha señalada ({fechaReservaFormateada}).
                       </p>
