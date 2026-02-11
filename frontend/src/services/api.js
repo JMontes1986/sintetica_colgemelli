@@ -73,6 +73,7 @@ export const reservasAPI = {
   obtenerTodas: (params) => api.get('/reservas', { params }),
   obtenerPorId: (id) => api.get(`/reservas/${id}`),
   actualizarEstado: (id, estado) => api.patch(`/reservas/${id}/estado`, { estado }),
+  reprogramar: (id, payload) => api.patch(`/reservas/${id}/reprogramar`, payload),
   actualizarGemellista: (id, estado) => api.patch(`/reservas/${id}/gemellista`, { estado }),
   registrarPago: (id, payload) => api.patch(`/reservas/${id}/pago`, payload),
   crearManual: (datos) => api.post('/reservas/manual', datos),
