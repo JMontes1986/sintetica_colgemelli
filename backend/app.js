@@ -39,11 +39,27 @@ app.use((req, res, next) => {
   return next();
 });
 
+const getLoginRateLimitKey = (req) => {
+  const email = req.body?.email?.toString().trim().toLowerCase();
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'ip-desconocida';
+
+  // Evita bloquear a todos los usuarios de una misma red cuando fallan varios logins.
+  if (email) {
+    return `${ip}:${email}`;
+  }
+
+  return ip;
+};
+
 // Rate limiting
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5,
-  message: 'Demasiados intentos de login. Intenta en 15 minutos.',
+  max: 10,
+  message: {
+    error: 'Demasiados intentos de login. Intenta en 15 minutos.'
+  },
+  skipSuccessfulRequests: true,
+  keyGenerator: getLoginRateLimitKey,
   standardHeaders: true,
   legacyHeaders: false
 });
