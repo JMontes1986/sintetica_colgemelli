@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS reservas (
     CHECK (estado_gemellista IN ('No aplica', 'Pendiente', 'Aprobado', 'Rechazado')),
   fecha DATE NOT NULL,
   hora TIME NOT NULL,
-  estado TEXT NOT NULL DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente', 'Jugado')),
+  estado TEXT NOT NULL DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente', 'Aprobado', 'Jugado')),
   metodo_pago TEXT CHECK (metodo_pago IN ('Nequi', 'Efectivo')),
   referencia_nequi TEXT,
   pago_registrado BOOLEAN NOT NULL DEFAULT FALSE,
@@ -49,6 +49,27 @@ ALTER TABLE IF EXISTS reservas
 UPDATE reservas
 SET estado_gemellista = COALESCE(estado_gemellista, 'No aplica')
 WHERE estado_gemellista IS NULL;
+
+-- Corregir constraint de estado en instalaciones previas
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE table_name = 'reservas'
+      AND constraint_type = 'CHECK'
+      AND constraint_name = 'reservas_estado_check'
+  ) THEN
+    ALTER TABLE reservas DROP CONSTRAINT reservas_estado_check;
+  END IF;
+
+  ALTER TABLE reservas
+    ADD CONSTRAINT reservas_estado_check
+    CHECK (estado IN ('Pendiente', 'Aprobado', 'Jugado'));
+EXCEPTION
+  WHEN duplicate_object THEN
+    NULL;
+END $$;
 
 -- 3. Configuración de horarios (rangos personalizados por fecha)
 CREATE TABLE IF NOT EXISTS configuracion_horarios (
