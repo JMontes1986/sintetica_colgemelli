@@ -18,6 +18,29 @@ const MAX_HORAS_CONSECUTIVAS = 3;
 const ESTADOS_GEMELLISTA = ['No aplica', 'Pendiente', 'Aprobado', 'Rechazado'];
 const MAX_SEMANAS_RECURRENTES = 52;
 const DIAS_SEMANA_VALIDOS = new Set([0, 1, 2, 3, 4, 5, 6]);
+const MAKE_WEBHOOK_URL =
+  process.env.MAKE_WEBHOOK_URL ||
+  'https://hook.us2.make.com/8cjwce8cbjdcuwre378nk0rosngvkpko';
+
+const notificarWebhookMake = async (payload) => {
+  if (!MAKE_WEBHOOK_URL) return;
+
+  try {
+    const response = await fetch(MAKE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      console.warn('Webhook de Make respondió con error:', response.status, response.statusText);
+    }
+  } catch (error) {
+    console.error('Error notificando webhook de Make:', error.message);
+  }
+};
 
 const obtenerFechaActualColombia = () => new Date(
   new Date().toLocaleString('en-US', { timeZone: TIMEZONE_COLOMBIA })
@@ -314,6 +337,14 @@ router.post('/crear', async (req, res) => {
 
     if (error) throw error;
 
+    await notificarWebhookMake({
+      evento: 'reserva_creada',
+      fecha,
+      horas: horasOrdenadas,
+      cantidad_reservas: data?.length || 0,
+      reservas: (data || []).map(formatearReserva)
+    });
+    
     res.status(201).json({
       message: 'Reserva creada exitosamente',
       reservas: (data || []).map(formatearReserva)
