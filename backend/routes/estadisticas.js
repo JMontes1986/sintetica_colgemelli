@@ -133,7 +133,7 @@ router.get('/por-dia', verificarToken, verificarRol('admin'), async (req, res) =
       reservasPorDia[reserva.fecha].total++;
       if (reserva.estado === 'Jugado') {
         reservasPorDia[reserva.fecha].jugadas++;
-      } else {
+      } else if (reserva.estado === 'Pendiente') {
         reservasPorDia[reserva.fecha].pendientes++;
       }
     });
@@ -172,7 +172,7 @@ router.get('/por-mes', verificarToken, verificarRol('admin'), async (req, res) =
       reservasPorMes[mes].total++;
       if (reserva.estado === 'Jugado') {
         reservasPorMes[mes].jugadas++;
-      } else {
+      } else if (reserva.estado === 'Pendiente') {
         reservasPorMes[mes].pendientes++;
       }
     });
