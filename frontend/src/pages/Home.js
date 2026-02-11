@@ -184,6 +184,7 @@ const Home = () => {
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   const [horasDisponibles, setHorasDisponibles] = useState(DEFAULT_HORARIO.horas);
   const [horasOcupadas, setHorasOcupadas] = useState([]);
+  const [horasPendientes, setHorasPendientes] = useState([]);
   const [horarioDelDia, setHorarioDelDia] = useState(DEFAULT_HORARIO);
   const [consultando, setConsultando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -196,6 +197,7 @@ const Home = () => {
     [today]: {
       horasDisponibles: DEFAULT_HORARIO.horas,
       horasOcupadas: [],
+      horasPendientes: [],
       horario: DEFAULT_HORARIO,
       error: ''
     }
@@ -245,6 +247,7 @@ const Home = () => {
       setConsultando(true);
       const response = await reservasAPI.obtenerDisponibilidad(fecha);
       const horasOcupadasAPI = response.data.horasOcupadas || [];
+      const horasPendientesAPI = response.data.horasPendientes || [];
       const horario = response.data.horario?.horas?.length
         ? {
             horas: response.data.horario.horas,
@@ -259,6 +262,7 @@ const Home = () => {
 
       setHorasDisponibles(horasSeleccionables);
       setHorasOcupadas(horasOcupadasAPI);
+      setHorasPendientes(horasPendientesAPI);
       setHorarioDelDia(horario);
 
       setDisponibilidadCache((prev) => ({
@@ -266,6 +270,7 @@ const Home = () => {
         [fecha]: {
           horasDisponibles: horasSeleccionables,
           horasOcupadas: horasOcupadasAPI,
+          horasPendientes: horasPendientesAPI,
           horario,
           error: ''
         }
@@ -294,6 +299,7 @@ const Home = () => {
       setHorasDisponibles(DEFAULT_HORARIO.horas);
       setHorasOcupadas([]);
       setHorarioDelDia(DEFAULT_HORARIO);
+      setHorasPendientes([]);
       setFormData((prev) => ({
         ...prev,
         hora: DEFAULT_HORARIO.horas.includes(prev.hora) ? prev.hora : DEFAULT_HORARIO.horas[0],
@@ -304,6 +310,7 @@ const Home = () => {
         [fecha]: {
           horasDisponibles: DEFAULT_HORARIO.horas,
           horasOcupadas: [],
+          horasPendientes: [],
           horario: DEFAULT_HORARIO,
           error: error.response?.data?.error || 'Sin datos de disponibilidad'
         }
@@ -355,6 +362,7 @@ const Home = () => {
               const diaData = {
                 horasDisponibles: response.data?.horasDisponibles || horario.horas,
                 horasOcupadas: response.data?.horasOcupadas || [],
+                horasPendientes: response.data?.horasPendientes || [],
                 horario,
                 error: ''
               };
@@ -369,6 +377,7 @@ const Home = () => {
               const diaData = {
                 horasDisponibles: DEFAULT_HORARIO.horas,
                 horasOcupadas: [],
+                horasPendientes: [],
                 horario: DEFAULT_HORARIO,
                 error: error.response?.data?.error || 'Sin datos de disponibilidad'
               };
@@ -485,11 +494,10 @@ const Home = () => {
         duracion: 1
       });
       
-      setHorasDisponibles((prev) => prev.filter((hora) => !horasSeleccionadas.includes(hora)));
-      setHorasOcupadas((prev) => {
-        const nuevasOcupadas = new Set(prev);
-        horasSeleccionadas.forEach((hora) => nuevasOcupadas.add(hora));
-        return Array.from(nuevasOcupadas);
+      setHorasPendientes((prev) => {
+        const nuevasPendientes = new Set(prev);
+        horasSeleccionadas.forEach((hora) => nuevasPendientes.add(hora));
+        return Array.from(nuevasPendientes);
       });
 
       setDisponibilidadDias((prev) =>
@@ -497,8 +505,9 @@ const Home = () => {
           dia.fechaValor === formData.fecha
             ? {
                 ...dia,
-                horasDisponibles: dia.horasDisponibles.filter((hora) => !horasSeleccionadas.includes(hora)),
-                horasOcupadas: [...(dia.horasOcupadas || []), ...horasSeleccionadas]
+                horasDisponibles: dia.horasDisponibles,
+                horasOcupadas: dia.horasOcupadas || [],
+                horasPendientes: [...(dia.horasPendientes || []), ...horasSeleccionadas]
               }
             : dia
         )
@@ -923,6 +932,7 @@ const Home = () => {
              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {(horarioDelDia.horas || []).map((horaSlot) => {
                   const estaReservada = horasOcupadas.includes(horaSlot);
+                  const estaPendiente = horasPendientes.includes(horaSlot);
                   const disponible = horasDisponibles.includes(horaSlot) && !estaReservada;
                   const rangoParaHora = obtenerHorasSeleccionadas(
                     horaSlot,
@@ -939,6 +949,10 @@ const Home = () => {
                     estadoClase = 'border-rose-200 bg-rose-50 text-rose-700 cursor-not-allowed';
                   } else if (disponible && estaSeleccionada) {
                     estadoClase = 'border-primary bg-green-50 text-primary';
+                  } else if (estaPendiente && disponible) {
+                    estadoClase = 'border-blue-200 bg-blue-50 text-blue-700 hover:border-primary';
+                  } else if (estaPendiente) {
+                    estadoClase = 'border-blue-200 bg-blue-50 text-blue-700 cursor-not-allowed';
                   } else if (disponible && bloqueDisponible) {
                     estadoClase = 'border-gray-200 hover:border-primary hover:bg-green-50';
                   }
@@ -967,7 +981,7 @@ const Home = () => {
                         <span>{horaSlot}</span>
                         {!disponible && (
                           <span className="text-xs font-medium uppercase tracking-wide">
-                            {estaReservada ? 'Reservado' : 'No disponible'}
+                            {estaReservada ? 'Reservado' : estaPendiente ? 'Pendiente' : 'No disponible'}
                           </span>
                         )}
                       </div>
@@ -979,6 +993,19 @@ const Home = () => {
               !consultando && (
                 <p className="text-sm text-red-600 mt-2">No hay horarios disponibles para esta fecha.</p>
               )}
+
+            {horasPendientes.length > 0 && (
+              <div className="mt-6">
+                <p className="text-sm text-gray-500 mb-2">Horarios pendientes de aprobación:</p>
+                <div className="flex flex-wrap gap-2">
+                  {horasPendientes.map((hora) => (
+                    <span key={hora} className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm">
+                      {hora}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {horasOcupadas.length > 0 && (
               <div className="mt-6">
@@ -1051,8 +1078,9 @@ const Home = () => {
                     <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                       {(dia.horario?.horas || DEFAULT_HORARIO.horas).map((hora) => {
                         const estaReservada = dia.horasOcupadas?.includes(hora);
+                        const estaPendiente = dia.horasPendientes?.includes(hora);
                         const disponible = dia.horasDisponibles.includes(hora);
-                        const ocupado = estaReservada || !disponible;
+                        const ocupado = estaReservada || estaPendiente || !disponible;
                         
                         return (
                           <div
@@ -1060,14 +1088,16 @@ const Home = () => {
                             className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
                               estaReservada
                                 ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                : ocupado
+                                : estaPendiente
+                                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                  : ocupado
                                   ? 'border-gray-200 bg-gray-50 text-gray-600'
                                   : 'border-green-200 bg-green-50 text-green-800'
                             }`}
                           >
                             <span className="font-semibold">{hora}</span>
                             <span className="text-xs uppercase tracking-wide">
-                              {estaReservada ? 'Reservado' : ocupado ? 'No disponible' : 'Disponible'}
+                              {estaReservada ? 'Reservado' : estaPendiente ? 'Pendiente' : ocupado ? 'No disponible' : 'Disponible'}
                             </span>
                           </div>
                         );
