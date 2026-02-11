@@ -58,7 +58,8 @@ const DashboardCancha = () => {
   const cargarReservas = useCallback(async () => {
     try {
       setLoading(true);
-      const params = filtro !== 'todas' ? { estado: filtro === 'pendientes' ? 'Pendiente' : 'Jugado' } : {};
+      const estadoPorFiltro = { pendientes: 'Pendiente', aprobadas: 'Aprobado', jugadas: 'Jugado' };
+      const params = filtro !== 'todas' ? { estado: estadoPorFiltro[filtro] } : {};
       const response = await reservasAPI.obtenerTodas(params);
       setReservas(response.data.reservas);
     } catch (error) {
@@ -188,6 +189,7 @@ const DashboardCancha = () => {
 
   const reservasFiltradas = reservas.filter(reserva => {
     if (filtro === 'pendientes') return reserva.estado === 'Pendiente';
+    if (filtro === 'aprobadas') return reserva.estado === 'Aprobado';
     if (filtro === 'jugadas') return reserva.estado === 'Jugado';
     return true;
   });
@@ -541,6 +543,16 @@ const DashboardCancha = () => {
               Pendientes ({reservas.filter(r => r.estado === 'Pendiente').length})
             </button>
             <button
+              onClick={() => setFiltro('aprobadas')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                filtro === 'aprobadas'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+              }`}
+            >
+              Aprobadas ({reservas.filter(r => r.estado === 'Aprobado').length})
+            </button>
+            <button
               onClick={() => setFiltro('jugadas')}
               className={`px-4 py-2 rounded-lg font-medium transition ${
                 filtro === 'jugadas'
@@ -682,10 +694,12 @@ const DashboardCancha = () => {
                           className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             reserva.estado === 'Jugado'
                               ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
+                              : reserva.estado === 'Aprobado'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-blue-100 text-blue-800'
                           }`}
                         >
-                          {reserva.estado === 'Pendiente' ? 'Pendiente de aprobación' : reserva.estado}
+                          {reserva.estado === 'Pendiente' ? 'Pendiente de aprobación' : reserva.estado === 'Aprobado' ? 'Aprobada' : reserva.estado}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -717,6 +731,14 @@ const DashboardCancha = () => {
                             {reserva.pago_registrado ? 'Actualizar pago' : 'Registrar pago'}
                           </button>
                         {reserva.estado === 'Pendiente' && (
+                          <button
+                              onClick={() => cambiarEstado(reserva.id, 'Aprobado')}
+                              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                            >
+                              Aprobar reserva
+                            </button>
+                          )}
+                          {reserva.estado === 'Aprobado' && (
                             <button
                               onClick={() => cambiarEstado(reserva.id, 'Jugado')}
                               className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
