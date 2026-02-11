@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { reservasAPI, estadisticasAPI, configuracionAPI } from '../services/api';
@@ -69,6 +69,7 @@ const DashboardAdmin = () => {
     valor: format(new Date(), 'yyyy-MM-dd')
   });
   const [cargandoRecaudo, setCargandoRecaudo] = useState(false);
+  const isPrimerCargaRecaudo = useRef(true);
   
   const [formData, setFormData] = useState({
     nombre_cliente: '',
@@ -168,9 +169,14 @@ const DashboardAdmin = () => {
   }, [cargarDatos]);
 
   useEffect(() => {
-    if (vistaActual === 'estadisticas') {
-      cargarRecaudo();
+    if (vistaActual !== 'estadisticas') return;
+
+    if (isPrimerCargaRecaudo.current) {
+      isPrimerCargaRecaudo.current = false;
+      return;
     }
+
+    cargarRecaudo();
   }, [filtroRecaudo, vistaActual, cargarRecaudo]);
   
   const cambiarEstado = async (id, nuevoEstado) => {
