@@ -12,7 +12,7 @@ const TIMEZONE_COLOMBIA = 'America/Bogota';
 const TIMEZONE_OFFSET_COLOMBIA = '-05:00';
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^\d{2}:\d{2}$/;
-const ESTADOS_VALIDOS = ['Pendiente', 'Jugado'];
+const ESTADOS_VALIDOS = ['Pendiente', 'Aprobado', 'Jugado'];
 const METODOS_PAGO_VALIDOS = ['Nequi', 'Efectivo'];
 const MAX_HORAS_CONSECUTIVAS = 3;
 const ESTADOS_GEMELLISTA = ['No aplica', 'Pendiente', 'Aprobado', 'Rechazado'];
@@ -278,6 +278,7 @@ router.post('/crear', async (req, res) => {
       .from('reservas')
       .select('hora')
       .eq('fecha', fecha)
+      .in('estado', ['Aprobado', 'Jugado'])
       .in('hora', horasOrdenadas);
 
     if (errorReservaExistente) throw errorReservaExistente;
@@ -454,6 +455,7 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
         .from('reservas')
         .select('hora')
         .eq('fecha', fechaReserva)
+        .in('estado', ['Aprobado', 'Jugado'])
         .in('hora', horasOrdenadas);
 
       if (errorReservaExistente) throw errorReservaExistente;
@@ -534,12 +536,17 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
     // Obtener reservas existentes para esa fecha
     const { data: reservasExistentes, error } = await supabase
       .from('reservas')
-      .select('hora')
+      .select('hora, estado')
       .eq('fecha', fecha);
 
     if (error) throw error;
 
-    const horasOcupadas = reservasExistentes.map((reserva) => normalizarHora(reserva.hora));
+    const horasOcupadas = (reservasExistentes || [])
+      .filter((reserva) => reserva.estado === 'Aprobado' || reserva.estado === 'Jugado')
+      .map((reserva) => normalizarHora(reserva.hora));
+    const horasPendientes = (reservasExistentes || [])
+      .filter((reserva) => reserva.estado === 'Pendiente')
+      .map((reserva) => normalizarHora(reserva.hora));
     const horasDisponibles = horariosDisponibles.filter(
       (h) => !horasOcupadas.includes(h) && !esHorarioEnElPasado(fecha, h)
     );
@@ -548,6 +555,7 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
       fecha,
       horasDisponibles,
       horasOcupadas,
+      horasPendientes,
       horario: {
         horaApertura: `${horarioDelDia.horaApertura.toString().padStart(2, '0')}:00`,
         horaCierre: `${horarioDelDia.horaCierre.toString().padStart(2, '0')}:00`,
@@ -564,6 +572,7 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
       fecha: req.params.fecha,
       horasDisponibles: buildHorariosDisponibles(),
       horasOcupadas: [],
+      horasPendientes: [],
       horario: {
         horaApertura: `${HORA_APERTURA.toString().padStart(2, '0')}:00`,
         horaCierre: `${HORA_CIERRE.toString().padStart(2, '0')}:00`,
@@ -733,6 +742,7 @@ router.patch('/:id/reprogramar', verificarToken, verificarRol('cancha', 'admin')
       .select('id')
       .eq('fecha', fecha)
       .eq('hora', hora)
+      .in('estado', ['Aprobado', 'Jugado'])
       .neq('id', id)
       .limit(1);
 
