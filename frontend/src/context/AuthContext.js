@@ -37,12 +37,12 @@ export const AuthProvider = ({ children }) => {
 
   // Revalidar token cuando cambie
   useEffect(() => {
-    if (token) {
+    if (token && !usuario) {
       verificarToken();
     } else {
       setLoading(false);
     }
-  }, [token, verificarToken]);
+  }, [token, usuario, verificarToken]);
 
   const login = async (email, password) => {
     try {
