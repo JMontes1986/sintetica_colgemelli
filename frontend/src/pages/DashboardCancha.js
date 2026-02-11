@@ -37,6 +37,9 @@ const DashboardCancha = () => {
   const [reservaPagoSeleccionada, setReservaPagoSeleccionada] = useState(null);
   const [pagoForm, setPagoForm] = useState({ metodo_pago: 'Nequi', referencia_nequi: '' });
   const [registrandoPago, setRegistrandoPago] = useState(false);
+  const [reservaEdicionSeleccionada, setReservaEdicionSeleccionada] = useState(null);
+  const [editForm, setEditForm] = useState({ fecha: format(new Date(), 'yyyy-MM-dd'), hora: '10:00' });
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
   
   const [formData, setFormData] = useState({
     nombre_cliente: '',
@@ -149,6 +152,35 @@ const DashboardCancha = () => {
     }
   };
   
+  const abrirModalEdicion = (reserva) => {
+    setReservaEdicionSeleccionada(reserva);
+    setEditForm({
+      fecha: reserva.fecha || format(new Date(), 'yyyy-MM-dd'),
+      hora: reserva.hora || '10:00'
+    });
+  };
+
+  const reprogramarReserva = async (e) => {
+    e.preventDefault();
+
+    if (!reservaEdicionSeleccionada) return;
+
+    try {
+      setGuardandoEdicion(true);
+      await reservasAPI.reprogramar(reservaEdicionSeleccionada.id, editForm);
+      setMensaje({ tipo: 'success', texto: 'Reserva actualizada correctamente' });
+      setReservaEdicionSeleccionada(null);
+      await cargarReservas();
+    } catch (error) {
+      setMensaje({
+        tipo: 'error',
+        texto: error.response?.data?.error || 'No pudimos actualizar la reserva'
+      });
+    } finally {
+      setGuardandoEdicion(false);
+    }
+  };
+  
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -239,6 +271,71 @@ const DashboardCancha = () => {
                   className="rounded-lg bg-primary px-4 py-2 text-white hover:bg-green-600 disabled:bg-gray-400"
                 >
                   {registrandoPago ? 'Guardando...' : 'Guardar pago'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {reservaEdicionSeleccionada && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black bg-opacity-50 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-gray-800">Editar reserva</h3>
+              <button
+                onClick={() => setReservaEdicionSeleccionada(null)}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Cerrar modal de edición"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
+              <p className="font-semibold text-primary">{reservaEdicionSeleccionada.nombre_cliente}</p>
+              <p>
+                Actual: {format(new Date(reservaEdicionSeleccionada.fecha), "dd 'de' MMMM, yyyy", { locale: es })}{' '}
+                · {reservaEdicionSeleccionada.hora}
+              </p>
+            </div>
+
+            <form onSubmit={reprogramarReserva} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Nueva fecha</label>
+                <input
+                  type="date"
+                  required
+                  value={editForm.fecha}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, fecha: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Nueva hora</label>
+                <input
+                  type="time"
+                  required
+                  value={editForm.hora}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, hora: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReservaEdicionSeleccionada(null)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={guardandoEdicion}
+                  className="rounded-lg bg-primary px-4 py-2 text-white hover:bg-green-600 disabled:bg-gray-400"
+                >
+                  {guardandoEdicion ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </form>
@@ -515,10 +612,15 @@ const DashboardCancha = () => {
                       <p className="text-sm font-semibold">{format(dia, 'd')}</p>
                       <div className="mt-2 space-y-1">
                         {reservasDia.slice(0, 3).map((reserva) => (
-                          <div key={reserva.id} className="rounded bg-primary/10 px-2 py-1 text-xs text-gray-700">
+                          <button
+                            key={reserva.id}
+                            type="button"
+                            onClick={() => abrirModalEdicion(reserva)}
+                            className="w-full rounded bg-primary/10 px-2 py-1 text-left text-xs text-gray-700 hover:bg-primary/20"
+                          >
                             <p className="font-semibold">{reserva.hora}</p>
                             <p className="truncate">{reserva.nombre_cliente}</p>
-                          </div>
+                          </button>
                         ))}
                         {reservasDia.length > 3 && (
                           <p className="text-xs font-semibold text-primary">+{reservasDia.length - 3} más</p>
@@ -602,6 +704,12 @@ const DashboardCancha = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => abrirModalEdicion(reserva)}
+                            className="px-3 py-1 rounded bg-indigo-500 text-white hover:bg-indigo-600 transition"
+                          >
+                            ✏️ Editar
+                          </button>
                           <button
                             onClick={() => abrirModalPago(reserva)}
                             className="px-3 py-1 rounded bg-secondary text-white hover:bg-blue-600 transition"
