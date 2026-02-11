@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { reservasAPI } from '../services/api';
-import { format } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, startOfMonth, startOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const DIAS_SEMANA = [
@@ -15,12 +15,23 @@ const DIAS_SEMANA = [
   { value: 0, label: 'Domingo' }
 ];
 
+const DIAS_CALENDARIO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+const obtenerDiasMes = (mesActual) => {
+  const fechaBase = new Date(`${mesActual}-01T00:00:00`);
+  const inicio = startOfWeek(startOfMonth(fechaBase), { weekStartsOn: 1 });
+  const fin = endOfWeek(endOfMonth(fechaBase), { weekStartsOn: 1 });
+  return eachDayOfInterval({ start: inicio, end: fin });
+};
+
 const DashboardCancha = () => {
   const navigate = useNavigate();
   const { usuario, logout } = useAuth();
   const [reservas, setReservas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('todas');
+  const [vistaReservas, setVistaReservas] = useState('tabla');
+  const [mesCalendario, setMesCalendario] = useState(format(new Date(), 'yyyy-MM'));
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   const [reservaPagoSeleccionada, setReservaPagoSeleccionada] = useState(null);
@@ -149,6 +160,14 @@ const DashboardCancha = () => {
     return true;
   });
 
+  const diasCalendario = obtenerDiasMes(mesCalendario);
+  const reservasPorFecha = reservasFiltradas.reduce((acumulado, reserva) => {
+    const llave = reserva.fecha;
+    if (!acumulado[llave]) acumulado[llave] = [];
+    acumulado[llave].push(reserva);
+    return acumulado;
+  }, {});
+  
   const toggleDiaSemana = (dia) => {
     setFormData((prev) => {
       const actual = prev.dias_semana || [];
@@ -403,7 +422,7 @@ const DashboardCancha = () => {
 
         {/* Filtros */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setFiltro('todas')}
               className={`px-4 py-2 rounded-lg font-medium transition ${
@@ -434,6 +453,33 @@ const DashboardCancha = () => {
             >
               Jugadas ({reservas.filter(r => r.estado === 'Jugado').length})
             </button>
+
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setVistaReservas('tabla')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  vistaReservas === 'tabla' ? 'bg-secondary text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                }`}
+              >
+                Tabla
+              </button>
+              <button
+                onClick={() => setVistaReservas('calendario')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  vistaReservas === 'calendario' ? 'bg-secondary text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                }`}
+              >
+                Calendario
+              </button>
+              {vistaReservas === 'calendario' && (
+                <input
+                  type="month"
+                  value={mesCalendario}
+                  onChange={(e) => setMesCalendario(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 focus:ring-2 focus:ring-primary"
+                />
+              )}
+            </div>
           </div>
         </div>
 
@@ -441,6 +487,48 @@ const DashboardCancha = () => {
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-gray-500">Cargando reservas...</div>
+          ) : vistaReservas === 'calendario' ? (
+            <div className="p-4 md:p-6">
+              <h3 className="mb-4 text-lg font-semibold text-gray-800">
+                Reservas de {format(new Date(`${mesCalendario}-01T00:00:00`), 'MMMM yyyy', { locale: es })}
+              </h3>
+              <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-gray-500 uppercase">
+                {DIAS_CALENDARIO.map((dia) => (
+                  <div key={dia} className="rounded bg-gray-100 py-2">
+                    {dia}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 grid grid-cols-7 gap-2">
+                {diasCalendario.map((dia) => {
+                  const fechaKey = format(dia, 'yyyy-MM-dd');
+                  const reservasDia = reservasPorFecha[fechaKey] || [];
+                  const esMesActual = isSameMonth(dia, new Date(`${mesCalendario}-01T00:00:00`));
+
+                  return (
+                    <div
+                      key={fechaKey}
+                      className={`min-h-[120px] rounded-lg border p-2 ${
+                        esMesActual ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100 text-gray-400'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold">{format(dia, 'd')}</p>
+                      <div className="mt-2 space-y-1">
+                        {reservasDia.slice(0, 3).map((reserva) => (
+                          <div key={reserva.id} className="rounded bg-primary/10 px-2 py-1 text-xs text-gray-700">
+                            <p className="font-semibold">{reserva.hora}</p>
+                            <p className="truncate">{reserva.nombre_cliente}</p>
+                          </div>
+                        ))}
+                        {reservasDia.length > 3 && (
+                          <p className="text-xs font-semibold text-primary">+{reservasDia.length - 3} más</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           ) : reservasFiltradas.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
