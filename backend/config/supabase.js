@@ -15,19 +15,36 @@ const decodeJwtPayload = (token) => {
   }
 };
 
+const normalizeEnvValue = (value) => {
+  if (typeof value !== 'string') return value;
+
+  const trimmedValue = value.trim();
+  const quotePairs = [
+    ['"', '"'],
+    ["'", "'"]
+  ];
+  const matchingQuotePair = quotePairs.find(
+    ([start, end]) => trimmedValue.startsWith(start) && trimmedValue.endsWith(end)
+  );
+
+  if (!matchingQuotePair || trimmedValue.length < 2) return trimmedValue;
+  return trimmedValue.slice(1, -1).trim();
+};
+
 const inferSupabaseKeyRole = (key) => {
-  if (!key) return null;
+  const normalizedKey = normalizeEnvValue(key);
+  if (!normalizedKey) return null;
 
-  if (key.startsWith('sb_secret_')) return 'service_role';
-  if (key.startsWith('sb_publishable_')) return 'publishable';
+  if (normalizedKey.startsWith('sb_secret_')) return 'service_role';
+  if (normalizedKey.startsWith('sb_publishable_')) return 'publishable';
 
-  const payload = decodeJwtPayload(key);
+  const payload = decodeJwtPayload(normalizedKey);
   return payload?.role || null;
 };
 
 const getFirstEnv = (names) => {
-  const name = names.find((envName) => process.env[envName]);
-  return { name, value: name ? process.env[name] : undefined };
+  const name = names.find((envName) => normalizeEnvValue(process.env[envName]));
+  return { name, value: name ? normalizeEnvValue(process.env[name]) : undefined };
 };
 
 const getSupabaseKeyInfo = () => {
@@ -56,7 +73,8 @@ const getSupabaseKeyInfo = () => {
   const selectedKeyRole = inferSupabaseKeyRole(selectedKey);
   const serviceRoleKeyRole = inferSupabaseKeyRole(serviceKey);
   const serviceRoleKeyValid = serviceRoleKeyRole === 'service_role';
-  const serviceRoleKeyMisconfigured = Boolean(serviceKey) && !serviceRoleKeyValid;
+  const serviceRoleKeyMisconfigured =
+    Boolean(serviceKey) && ['anon', 'publishable'].includes(serviceRoleKeyRole);
 
   return {
     selectedKey,
@@ -66,12 +84,12 @@ const getSupabaseKeyInfo = () => {
     serviceRoleKeyRole,
     serviceRoleKeyValid,
     serviceRoleKeyMisconfigured,
-    keyType: selectedKeyRole || (selectedKey ? 'unknown' : 'missing')
+    keyType: selectedKeyRole || (serviceKey ? 'service_role_unverified' : selectedKey ? 'unknown' : 'missing')
   };
 };
 
 const createSupabaseClient = () => {
-  const supabaseUrl = process.env.PRIVATE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseUrl = normalizeEnvValue(process.env.PRIVATE_SUPABASE_URL || process.env.SUPABASE_URL);
   const { selectedKey: supabaseKey } = getSupabaseKeyInfo();
 
   const missingVars = [];
@@ -100,7 +118,7 @@ const getSupabase = () => {
 };
 
 const getSupabaseStatus = () => {
-  const supabaseUrl = process.env.PRIVATE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseUrl = normalizeEnvValue(process.env.PRIVATE_SUPABASE_URL || process.env.SUPABASE_URL);
   const {
     selectedKey,
     selectedKeySource,

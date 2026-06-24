@@ -10,13 +10,18 @@ const router = express.Router();
 const isEmailValido = (valor) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor || '');
 const isPasswordFuerte = (valor) => typeof valor === 'string' && valor.length >= 8;
 const ROLES_PERMITIDOS = ['admin', 'cancha', 'publico'];
+const PUBLIC_SUPABASE_KEY_ROLES = ['anon', 'publishable'];
 
 const ensureServiceRole = () => {
   const supabaseStatus = getSupabase.getStatus?.();
-  const isServiceRole = supabaseStatus?.keyType === 'service_role';
+  const isPublicKey = PUBLIC_SUPABASE_KEY_ROLES.includes(supabaseStatus?.selectedKeyRole);
+  const hasExplicitServiceRoleEnv =
+    supabaseStatus?.serviceRoleKeyPresent && !supabaseStatus?.serviceRoleKeyMisconfigured;
+  const isServiceRole = supabaseStatus?.keyType === 'service_role' || hasExplicitServiceRoleEnv;
 
   return {
     isServiceRole,
+    isPublicKey,
     supabaseStatus
   };
 };
@@ -24,13 +29,14 @@ const ensureServiceRole = () => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { isServiceRole, supabaseStatus } = ensureServiceRole();
+    const { isServiceRole, isPublicKey, supabaseStatus } = ensureServiceRole();
 
     if (!isServiceRole) {
       return res.status(503).json({
         error: 'Servicio de autenticación no disponible',
-        message:
-          'Activa PRIVATE_SUPABASE_SERVICE_ROLE_KEY en Netlify (o SUPABASE_SERVICE_ROLE_KEY en local) para consultar la tabla usuarios cuando RLS está habilitado.',
+        message: isPublicKey
+          ? 'La clave configurada para Supabase es pública/anon. Usa SUPABASE_SERVICE_ROLE_KEY o PRIVATE_SUPABASE_SERVICE_ROLE_KEY con la service_role key real.'
+          : 'Activa SUPABASE_SERVICE_ROLE_KEY o PRIVATE_SUPABASE_SERVICE_ROLE_KEY en Netlify para consultar la tabla usuarios cuando RLS está habilitado.',
         detalle: supabaseStatus
       });
     }

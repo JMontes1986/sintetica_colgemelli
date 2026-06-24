@@ -6,6 +6,8 @@ const formatKeyType = (keyType) => {
   switch (keyType) {
     case 'service_role':
       return 'Service role (recomendada para el backend)';
+    case 'service_role_unverified':
+      return 'Service role configurada (formato no verificable)';
     case 'anon':
       return 'Anon/public';
     default:
