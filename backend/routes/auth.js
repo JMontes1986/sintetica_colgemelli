@@ -8,6 +8,7 @@ const { getJwtSecret } = require('../utils/env');
 const router = express.Router();
 
 const isEmailValido = (valor) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor || '');
+const normalizeEmail = (valor) => valor?.toString().trim().toLowerCase() || '';
 const isPasswordFuerte = (valor) => typeof valor === 'string' && valor.length >= 8;
 const ROLES_PERMITIDOS = ['admin', 'cancha', 'publico'];
 const PUBLIC_SUPABASE_KEY_ROLES = ['anon', 'publishable'];
@@ -43,7 +44,7 @@ router.post('/login', async (req, res) => {
     }
     
     const supabase = getSupabase();
-    const email = req.body?.email?.toString().trim();
+    const email = normalizeEmail(req.body?.email);
     const password = req.body?.password;
 
     if (!isEmailValido(email) || !isPasswordFuerte(password)) {
@@ -59,6 +60,7 @@ router.post('/login', async (req, res) => {
 
     if (error) {
       if (error.code === 'PGRST116') {
+        console.warn(`[LOGIN FAILED] Usuario no encontrado para email: ${email}`);
         return res.status(401).json({ error: 'Credenciales inválidas' });
       }
 
@@ -83,6 +85,12 @@ router.post('/login', async (req, res) => {
     }
 
     if (!usuario) {
+      console.warn(`[LOGIN FAILED] Usuario vacío para email: ${email}`);
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    if (!usuario.password_hash) {
+      console.warn(`[LOGIN FAILED] Usuario sin password_hash para email: ${email}`);
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
@@ -90,6 +98,7 @@ router.post('/login', async (req, res) => {
     const passwordValido = await bcrypt.compare(password, usuario.password_hash);
 
     if (!passwordValido) {
+      console.warn(`[LOGIN FAILED] Contraseña no coincide para email: ${email}`);
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
@@ -135,7 +144,7 @@ router.get('/verificar', verificarToken, (req, res) => {
 // Crear usuario temporal en Supabase Auth
 router.post('/supabase-signup', async (req, res) => {
   try {
-    const email = req.body?.email?.toString().trim();
+    const email = normalizeEmail(req.body?.email);
     const password = req.body?.password;
 
     if (!isEmailValido(email) || !isPasswordFuerte(password)) {
@@ -188,7 +197,7 @@ router.post('/supabase-signup', async (req, res) => {
 router.post('/registro', async (req, res) => {
   try {
     const supabase = getSupabase();
-    const email = req.body?.email?.toString().trim();
+    const email = normalizeEmail(req.body?.email);
     const nombre = req.body?.nombre?.toString().trim();
     const password = req.body?.password;
     const rol = ROLES_PERMITIDOS.includes(req.body?.rol) ? req.body.rol : 'publico';

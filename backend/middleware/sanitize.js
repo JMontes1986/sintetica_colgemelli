@@ -1,6 +1,7 @@
 const xss = require('xss');
 
 const PROHIBITED_KEYS = ['__proto__', 'constructor', 'prototype'];
+const RAW_STRING_KEYS = ['password', 'password_hash', 'contrasena', 'contraseña'];
 
 const shouldDropKey = (key) => {
   const normalized = key?.toString() || '';
@@ -12,13 +13,19 @@ const shouldDropKey = (key) => {
   );
 };
 
-const sanitizeValue = (value) => {
+const shouldKeepRawString = (key) => RAW_STRING_KEYS.includes(key?.toString().toLowerCase());
+
+const sanitizeValue = (value, key) => {
+  if (shouldKeepRawString(key) && typeof value === 'string') {
+    return value;
+  }
+
   if (typeof value === 'string') {
     return xss(value, { whiteList: [], stripIgnoreTag: true, stripIgnoreTagBody: ['script'] });
   }
 
   if (Array.isArray(value)) {
-    return value.map(sanitizeValue);
+    return value.map((item) => sanitizeValue(item, key));
   }
 
   if (value && typeof value === 'object') {
@@ -27,7 +34,7 @@ const sanitizeValue = (value) => {
         return acc;
       }
       
-      acc[key] = sanitizeValue(val);
+      acc[key] = sanitizeValue(val, key);
       return acc;
     }, {});
   }

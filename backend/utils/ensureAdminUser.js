@@ -4,7 +4,7 @@ const getSupabase = require('../config/supabase');
 const logPrefix = '[Admin inicial]';
 
 const ensureDefaultAdmin = async () => {
-  const email = process.env.ADMIN_EMAIL;
+  const email = process.env.ADMIN_EMAIL?.toString().trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   const nombre = process.env.ADMIN_NAME || 'Administrador';
 
