@@ -16,6 +16,7 @@ const ESTADOS_VALIDOS = ['Pendiente', 'Aprobado', 'Jugado'];
 const METODOS_PAGO_VALIDOS = ['Nequi', 'Efectivo'];
 const MAX_HORAS_CONSECUTIVAS = 3;
 const ESTADOS_GEMELLISTA = ['No aplica', 'Pendiente', 'Aprobado', 'Rechazado'];
+const TIPOS_CANCHA_VALIDOS = ['futbol_7', 'futbol_9'];
 const MAX_SEMANAS_RECURRENTES = 52;
 const DIAS_SEMANA_VALIDOS = new Set([0, 1, 2, 3, 4, 5, 6]);
 const MAKE_WEBHOOK_URL =
@@ -218,6 +219,9 @@ router.post('/crear', async (req, res) => {
     const es_familia_gemellista = req.usuario?.rol === 'admin' ? false : es_familia_gemellista_solicitado;
     const nombre_gemellista = sanitizarTexto(req.body?.nombre_gemellista);
     const cedula_gemellista = sanitizarTexto(req.body?.cedula_gemellista);
+    const tipo_cancha = TIPOS_CANCHA_VALIDOS.includes(sanitizarTexto(req.body?.tipo_cancha))
+      ? sanitizarTexto(req.body?.tipo_cancha)
+      : 'futbol_7';
 
     nombre_cliente = sanitizarTexto(nombre_cliente);
     email_cliente = sanitizarEmail(email_cliente);
@@ -328,6 +332,7 @@ router.post('/crear', async (req, res) => {
       nombre_gemellista: es_familia_gemellista ? nombre_gemellista : null,
       cedula_gemellista: es_familia_gemellista ? cedula_gemellista : null,
       estado_gemellista,
+      tipo_cancha,
       fecha,
       hora: horaSeleccionada,
       estado: 'Pendiente'
@@ -407,6 +412,9 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
     const es_familia_gemellista = req.usuario?.rol === 'admin' ? false : es_familia_gemellista_solicitado;
     const nombre_gemellista = sanitizarTexto(req.body?.nombre_gemellista);
     const cedula_gemellista = sanitizarTexto(req.body?.cedula_gemellista);
+    const tipo_cancha = TIPOS_CANCHA_VALIDOS.includes(sanitizarTexto(req.body?.tipo_cancha))
+      ? sanitizarTexto(req.body?.tipo_cancha)
+      : 'futbol_7';
 
     const horasSolicitadas = Array.isArray(req.body?.horas)
       ? req.body.horas
@@ -510,6 +518,7 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
         nombre_gemellista: es_familia_gemellista ? nombre_gemellista : null,
         cedula_gemellista: es_familia_gemellista ? cedula_gemellista : null,
         estado_gemellista,
+        tipo_cancha,
         fecha: fechaReserva,
         hora: horaSeleccionada,
         estado: 'Pendiente',

@@ -22,6 +22,14 @@ const DEFAULT_HORARIO = {
 
 const DURACION_MAXIMA = 3;
 
+const TIPOS_CANCHA = {
+  FUTBOL_7: 'futbol_7',
+  FUTBOL_9: 'futbol_9'
+};
+
+const TARIFA_FUTBOL_9_PUBLICO = 260000;
+const TARIFA_FUTBOL_9_GEMELLI = 230000;
+
 const CONFIGURACIONES_CANCHA = [
   {
     titulo: 'Tres canchas de fútbol 7',
@@ -75,7 +83,11 @@ const esFinDeSemana = (fecha) => {
   return diaSemana === 0 || diaSemana === 6;
 };
 
-const obtenerTarifaPorHora = (hora, fecha, esFamiliaGemellista = false) => {
+const obtenerTarifaPorHora = (hora, fecha, esFamiliaGemellista = false, tipoCancha = TIPOS_CANCHA.FUTBOL_7) => {
+  if (tipoCancha === TIPOS_CANCHA.FUTBOL_9) {
+    return esFamiliaGemellista ? TARIFA_FUTBOL_9_GEMELLI : TARIFA_FUTBOL_9_PUBLICO;
+  }
+
   const horaEntera = parseInt(hora?.slice(0, 2), 10);
 
   if (Number.isNaN(horaEntera)) return 0;
@@ -165,9 +177,9 @@ const esFestivoColombia = (fechaISO) => {
   return festivos.has(fechaISO);
 };
 
-const calcularTotalReserva = (horas = [], fecha, esFamiliaGemellista = false) =>
+const calcularTotalReserva = (horas = [], fecha, esFamiliaGemellista = false, tipoCancha = TIPOS_CANCHA.FUTBOL_7) =>
   (horas || []).reduce(
-    (total, hora) => total + obtenerTarifaPorHora(hora, fecha, esFamiliaGemellista),
+    (total, hora) => total + obtenerTarifaPorHora(hora, fecha, esFamiliaGemellista, tipoCancha),
     0
   );
 
@@ -193,6 +205,7 @@ const Home = () => {
     email_cliente: '',
     celular_cliente: '',
     es_familia_gemellista: false,
+    tipo_cancha: TIPOS_CANCHA.FUTBOL_7,
     nombre_gemellista: '',
     cedula_gemellista: '',
     fecha: today,
@@ -235,13 +248,15 @@ const Home = () => {
   const horasParaPago = resumenReserva?.horas || horasSeleccionadas;
   const fechaParaPago = resumenReserva?.fecha || formData.fecha;
   const esFamiliaGemellista = resumenReserva?.es_familia_gemellista || formData.es_familia_gemellista;
+  const tipoCanchaReserva = resumenReserva?.tipo_cancha || formData.tipo_cancha;
   const estadoGemellistaActual =
     resumenReserva?.estado_gemellista || (formData.es_familia_gemellista ? 'Pendiente' : 'No aplica');
   const tieneTarifaGemellistaActiva = estadoGemellistaActual === 'Aprobado';
   const totalResumenReserva = calcularTotalReserva(
     horasParaPago,
     fechaParaPago,
-    tieneTarifaGemellistaActiva
+    tieneTarifaGemellistaActiva,
+    tipoCanchaReserva
   );
   const esDiaFestivoSeleccionado = esFestivoColombia(formData.fecha);
   const fechaReservaFormateada = resumenReserva?.fecha
@@ -494,6 +509,7 @@ const Home = () => {
         email_cliente: reservaBase.email_cliente,
         celular_cliente: reservaBase.celular_cliente,
         es_familia_gemellista: reservaBase.es_familia_gemellista,
+        tipo_cancha: reservaBase.tipo_cancha || formData.tipo_cancha,
         nombre_gemellista: reservaBase.nombre_gemellista,
         cedula_gemellista: reservaBase.cedula_gemellista,
         estado_gemellista: estadoGemellistaRespuesta,
@@ -505,6 +521,7 @@ const Home = () => {
         email_cliente: '',
         celular_cliente: '',
         es_familia_gemellista: false,
+        tipo_cancha: TIPOS_CANCHA.FUTBOL_7,
         nombre_gemellista: '',
         cedula_gemellista: '',
         fecha: formData.fecha,
@@ -578,12 +595,19 @@ const Home = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <p className="text-xs uppercase text-gray-500">Cancha</p>
+                      <p className="text-lg font-semibold text-gray-800">
+                        {tipoCanchaReserva === TIPOS_CANCHA.FUTBOL_9 ? 'Fútbol 9' : 'Fútbol 7'}
+                      </p>
+                    </div>
+                    <div>
                       <p className="text-xs uppercase text-gray-500">Hora</p>
                       <p className="text-lg font-semibold text-gray-800">
                         {formatearRangoHoras(resumenReserva.horas || [])}
                       </p>
                     </div>
-                    <div>
+                  </div>
+                  <div>
                       <p className="text-xs uppercase text-gray-500">Estado</p>
                       <p className="text-sm font-semibold text-blue-700">Pendiente de aprobación</p>
                       <p className="mt-1 text-xs text-gray-600">
@@ -623,7 +647,6 @@ const Home = () => {
                   </div>
                 )}
               </div>
-            </div>
 
               <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-green-50 p-4 shadow-inner">
                 <div className="flex items-center justify-between">
@@ -643,7 +666,7 @@ const Home = () => {
                       <p className="text-xs text-gray-600">
                         {horasParaPago.length
                           ? esFamiliaGemellista
-                            ? `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} con tarifa especial Familia Gemellista.`
+                            ? `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} con tarifa especial ${tipoCanchaReserva === TIPOS_CANCHA.FUTBOL_9 ? 'Papás Gemelli fútbol 9' : 'Familia Gemellista'}.`
                             : `${horasParaPago.length} ${horasParaPago.length === 1 ? 'hora' : 'horas'} calculadas automáticamente según la tarifa vigente.`
                           : 'Calcularemos el total cuando confirmes tu horario.'}
                       </p>
@@ -764,6 +787,11 @@ const Home = () => {
                 <p className="mt-2">Lunes a domingo desde 4:00 p.m.: $110.000 COP por hora.</p>
                 <p className="mt-1">La tarifa especial se aplica después de validación administrativa.</p>
               </div>
+              <div className="rounded-2xl bg-slate-950 p-4 text-white sm:col-span-2">
+                <p className="font-semibold">Cancha fútbol 9</p>
+                <p className="mt-2 text-white/80">Público fútbol 9: $260.000 COP por hora.</p>
+                <p className="mt-1 text-white/80">Papás Gemelli: $230.000 COP por hora, sujeto a validación.</p>
+              </div>
             </div>
           </div>
         </section>
@@ -832,6 +860,37 @@ const Home = () => {
                     onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
+                </div>
+              </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-gray-800 font-semibold">Elige el tipo de cancha</p>
+                <p className="mt-1 text-sm text-gray-600">El valor se calcula automáticamente según tu elección y la validación Gemellista.</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className={`cursor-pointer rounded-xl border p-4 transition ${formData.tipo_cancha === TIPOS_CANCHA.FUTBOL_7 ? 'border-primary bg-green-50 ring-2 ring-primary/20' : 'border-gray-200 bg-white hover:border-primary'}`}>
+                    <input
+                      type="radio"
+                      name="tipo_cancha"
+                      value={TIPOS_CANCHA.FUTBOL_7}
+                      checked={formData.tipo_cancha === TIPOS_CANCHA.FUTBOL_7}
+                      onChange={(e) => setFormData({ ...formData, tipo_cancha: e.target.value })}
+                      className="sr-only"
+                    />
+                    <span className="block font-semibold text-gray-900">Fútbol 7</span>
+                    <span className="mt-1 block text-sm text-gray-600">Tarifa por hora según horario vigente.</span>
+                  </label>
+                  <label className={`cursor-pointer rounded-xl border p-4 transition ${formData.tipo_cancha === TIPOS_CANCHA.FUTBOL_9 ? 'border-primary bg-green-50 ring-2 ring-primary/20' : 'border-gray-200 bg-white hover:border-primary'}`}>
+                    <input
+                      type="radio"
+                      name="tipo_cancha"
+                      value={TIPOS_CANCHA.FUTBOL_9}
+                      checked={formData.tipo_cancha === TIPOS_CANCHA.FUTBOL_9}
+                      onChange={(e) => setFormData({ ...formData, tipo_cancha: e.target.value })}
+                      className="sr-only"
+                    />
+                    <span className="block font-semibold text-gray-900">Fútbol 9</span>
+                    <span className="mt-1 block text-sm text-gray-600">Público $260.000 · Papás Gemelli $230.000 por hora.</span>
+                  </label>
                 </div>
               </div>
 

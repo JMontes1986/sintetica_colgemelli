@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS reservas (
   cedula_gemellista TEXT,
   estado_gemellista TEXT NOT NULL DEFAULT 'No aplica'
     CHECK (estado_gemellista IN ('No aplica', 'Pendiente', 'Aprobado', 'Rechazado')),
+  tipo_cancha TEXT NOT NULL DEFAULT 'futbol_7' CHECK (tipo_cancha IN ('futbol_7', 'futbol_9')),
   fecha DATE NOT NULL,
   hora TIME NOT NULL,
   estado TEXT NOT NULL DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente', 'Aprobado', 'Jugado')),
@@ -43,7 +44,9 @@ ALTER TABLE IF EXISTS reservas
   ADD COLUMN IF NOT EXISTS nombre_gemellista TEXT,
   ADD COLUMN IF NOT EXISTS cedula_gemellista TEXT,
   ADD COLUMN IF NOT EXISTS estado_gemellista TEXT NOT NULL DEFAULT 'No aplica'
-    CHECK (estado_gemellista IN ('No aplica', 'Pendiente', 'Aprobado', 'Rechazado'));
+    CHECK (estado_gemellista IN ('No aplica', 'Pendiente', 'Aprobado', 'Rechazado')),
+  ADD COLUMN IF NOT EXISTS tipo_cancha TEXT NOT NULL DEFAULT 'futbol_7'
+    CHECK (tipo_cancha IN ('futbol_7', 'futbol_9'));
 
 -- Normalizar valores existentes
 UPDATE reservas
@@ -84,9 +87,9 @@ CREATE TABLE IF NOT EXISTS configuracion_horarios (
 );
 
 -- 4. Crear índices para mejorar consultas
-CREATE INDEX idx_reservas_fecha ON reservas(fecha);
-CREATE INDEX idx_reservas_estado ON reservas(estado);
-CREATE INDEX idx_reservas_fecha_hora ON reservas(fecha, hora);
+CREATE INDEX IF NOT EXISTS idx_reservas_fecha ON reservas(fecha);
+CREATE INDEX IF NOT EXISTS idx_reservas_estado ON reservas(estado);
+CREATE INDEX IF NOT EXISTS idx_reservas_fecha_hora ON reservas(fecha, hora);
 
 -- 5. Crear cuentas manualmente (no se incluyen usuarios por defecto)
 
@@ -95,10 +98,12 @@ ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reservas ENABLE ROW LEVEL SECURITY;
 
 -- 7. Políticas de seguridad para usuarios
+DROP POLICY IF EXISTS "Usuarios pueden ver su propio perfil" ON usuarios;
 CREATE POLICY "Usuarios pueden ver su propio perfil"
   ON usuarios FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Solo admins pueden ver todos los usuarios" ON usuarios;
 CREATE POLICY "Solo admins pueden ver todos los usuarios"
   ON usuarios FOR SELECT
   USING (
@@ -109,10 +114,12 @@ CREATE POLICY "Solo admins pueden ver todos los usuarios"
   );
 
 -- 8. Políticas de seguridad para reservas
+DROP POLICY IF EXISTS "Todos pueden crear reservas" ON reservas;
 CREATE POLICY "Todos pueden crear reservas"
   ON reservas FOR INSERT
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Operadores cancha pueden ver reservas" ON reservas;
 CREATE POLICY "Operadores cancha pueden ver reservas"
   ON reservas FOR SELECT
   USING (
@@ -122,6 +129,7 @@ CREATE POLICY "Operadores cancha pueden ver reservas"
     )
   );
 
+DROP POLICY IF EXISTS "Operadores cancha pueden actualizar reservas" ON reservas;
 CREATE POLICY "Operadores cancha pueden actualizar reservas"
   ON reservas FOR UPDATE
   USING (
@@ -131,6 +139,7 @@ CREATE POLICY "Operadores cancha pueden actualizar reservas"
     )
   );
 
+DROP POLICY IF EXISTS "Solo admins pueden eliminar reservas" ON reservas;
 CREATE POLICY "Solo admins pueden eliminar reservas"
   ON reservas FOR DELETE
   USING (
@@ -150,6 +159,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 9. Función para actualizar timestamp
+DROP TRIGGER IF EXISTS update_reservas_updated_at ON reservas;
 CREATE TRIGGER update_reservas_updated_at
   BEFORE UPDATE ON reservas
   FOR EACH ROW
