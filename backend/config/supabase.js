@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 let supabaseInstance = null;
 const buildMissingVarsMessage = (missingVars) =>
-  `Configuración de Supabase incompleta: faltan ${missingVars.join(', ')}. Define estas variables en Netlify (Site settings → Environment variables) o en tu .env local.`;
+  `Configuración de Supabase incompleta: faltan ${missingVars.join(', ')}. En Netlify usa variables privadas sin prefijo SUPABASE_ para no exponerlas al build del frontend.`;
 
 const decodeJwtPayload = (token) => {
   if (!token || token.split('.').length !== 3) return null;
@@ -25,26 +25,34 @@ const inferSupabaseKeyRole = (key) => {
   return payload?.role || null;
 };
 
-const getSupabaseKeyInfo = () => {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey = process.env.SUPABASE_ANON_KEY;
-  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-  const legacyKey = process.env.SUPABASE_KEY;
+const getFirstEnv = (names) => {
+  const name = names.find((envName) => process.env[envName]);
+  return { name, value: name ? process.env[name] : undefined };
+};
 
-  const selectedKey =
-    serviceKey ||
-    anonKey ||
-    publishableKey ||
-    legacyKey;
-  const selectedKeySource = serviceKey
-    ? 'SUPABASE_SERVICE_ROLE_KEY'
-    : anonKey
-      ? 'SUPABASE_ANON_KEY'
-      : publishableKey
-        ? 'SUPABASE_PUBLISHABLE_KEY'
-        : legacyKey
-          ? 'SUPABASE_KEY'
-          : 'missing';
+const getSupabaseKeyInfo = () => {
+  const serviceKeyEnv = getFirstEnv(['PRIVATE_SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY']);
+  const anonKeyEnv = getFirstEnv(['PRIVATE_SUPABASE_ANON_KEY', 'SUPABASE_ANON_KEY']);
+  const publishableKeyEnv = getFirstEnv(['PRIVATE_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_PUBLISHABLE_KEY']);
+  const legacyKeyEnv = getFirstEnv(['PRIVATE_SUPABASE_KEY', 'SUPABASE_KEY']);
+
+  const serviceKey = serviceKeyEnv.value;
+  const anonKey = anonKeyEnv.value;
+  const publishableKey = publishableKeyEnv.value;
+  const legacyKey = legacyKeyEnv.value;
+
+  const selectedKeyEnv =
+    serviceKeyEnv.name
+      ? serviceKeyEnv
+      : anonKeyEnv.name
+        ? anonKeyEnv
+        : publishableKeyEnv.name
+          ? publishableKeyEnv
+          : legacyKeyEnv.name
+            ? legacyKeyEnv
+            : { name: 'missing', value: undefined };
+  const selectedKey = selectedKeyEnv.value;
+  const selectedKeySource = selectedKeyEnv.name;
   const selectedKeyRole = inferSupabaseKeyRole(selectedKey);
   const serviceRoleKeyRole = inferSupabaseKeyRole(serviceKey);
   const serviceRoleKeyValid = serviceRoleKeyRole === 'service_role';
@@ -63,13 +71,13 @@ const getSupabaseKeyInfo = () => {
 };
 
 const createSupabaseClient = () => {
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseUrl = process.env.PRIVATE_SUPABASE_URL || process.env.SUPABASE_URL;
   const { selectedKey: supabaseKey } = getSupabaseKeyInfo();
 
   const missingVars = [];
-  if (!supabaseUrl) missingVars.push('SUPABASE_URL');
+  if (!supabaseUrl) missingVars.push('PRIVATE_SUPABASE_URL (o SUPABASE_URL local)');
   if (!supabaseKey) {
-    missingVars.push('SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SUPABASE_PUBLISHABLE_KEY o SUPABASE_KEY');
+    missingVars.push('PRIVATE_SUPABASE_SERVICE_ROLE_KEY (o SUPABASE_SERVICE_ROLE_KEY local)');
   }
   if (missingVars.length) {
     const error = new Error(buildMissingVarsMessage(missingVars));
@@ -92,7 +100,7 @@ const getSupabase = () => {
 };
 
 const getSupabaseStatus = () => {
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseUrl = process.env.PRIVATE_SUPABASE_URL || process.env.SUPABASE_URL;
   const {
     selectedKey,
     selectedKeySource,

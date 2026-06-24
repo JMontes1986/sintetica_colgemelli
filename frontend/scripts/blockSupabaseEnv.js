@@ -10,7 +10,7 @@ const hasSupabaseEnv = Object.keys(process.env).some(
 if (hasSupabaseEnv) {
   console.error(
     '\n⛔️ Variables SUPABASE_* detectadas en el entorno del frontend.\n' +
-      'Mueve las llaves de Supabase al backend/Netlify Functions y elimina las variables del panel del sitio.'
+      'Renómbralas en Netlify a PRIVATE_SUPABASE_URL y PRIVATE_SUPABASE_SERVICE_ROLE_KEY para que solo las use el backend/functions.'
   );
   process.exit(1);
 }

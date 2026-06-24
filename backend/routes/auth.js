@@ -30,7 +30,7 @@ router.post('/login', async (req, res) => {
       return res.status(503).json({
         error: 'Servicio de autenticación no disponible',
         message:
-          'Activa SUPABASE_SERVICE_ROLE_KEY en el backend para consultar la tabla usuarios cuando RLS está habilitado.',
+          'Activa PRIVATE_SUPABASE_SERVICE_ROLE_KEY en Netlify (o SUPABASE_SERVICE_ROLE_KEY en local) para consultar la tabla usuarios cuando RLS está habilitado.',
         detalle: supabaseStatus
       });
     }
@@ -59,7 +59,7 @@ router.post('/login', async (req, res) => {
         return res.status(503).json({
           error: 'Servicio de autenticación no disponible',
           message:
-            'RLS está activo en la tabla usuarios y la clave actual no tiene permisos. Usa SUPABASE_SERVICE_ROLE_KEY en el backend.',
+            'RLS está activo en la tabla usuarios y la clave actual no tiene permisos. Usa PRIVATE_SUPABASE_SERVICE_ROLE_KEY en Netlify (o SUPABASE_SERVICE_ROLE_KEY en local).',
           detalle: error
         });
       }
@@ -134,7 +134,7 @@ router.post('/supabase-signup', async (req, res) => {
       return res.status(400).json({
         error: 'Faltan credenciales de servicio de Supabase',
         message:
-          'Configura SUPABASE_SERVICE_ROLE_KEY en el backend. El frontend no debe exponer ninguna clave de Supabase.',
+          'Configura PRIVATE_SUPABASE_SERVICE_ROLE_KEY en Netlify (o SUPABASE_SERVICE_ROLE_KEY en local). El frontend no debe exponer ninguna clave de Supabase.',
         detalle: supabaseStatus
       });
     }

@@ -54,8 +54,8 @@ Copia `.env.example` y completa tus credenciales:
 cp .env.example .env
 ```
 
-> **Importante:** En Netlify debes definir estas mismas variables de entorno en la configuración del sitio (Site settings → Environment variables) para que la función `/.netlify/functions/api` pueda conectarse a Supabase.
-> Con RLS activo, `SUPABASE_SERVICE_ROLE_KEY` debe ser la llave secreta/service_role real. Si colocas la anon/public key en esa variable, el login de administrador no podrá leer la tabla `usuarios`.
+> **Importante:** En local puedes usar las variables `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` del archivo `backend/.env`. En Netlify no uses variables con prefijo `SUPABASE_` en el sitio, porque el build del frontend las detecta y se detiene para evitar exposición accidental. Define `PRIVATE_SUPABASE_URL` y `PRIVATE_SUPABASE_SERVICE_ROLE_KEY` en Site settings → Environment variables para que solo las lea `/.netlify/functions/api`.
+> Con RLS activo, `PRIVATE_SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_SERVICE_ROLE_KEY` debe ser la llave secreta/service_role real. Si colocas la anon/public key en esa variable, el login de administrador no podrá leer la tabla `usuarios`.
 
 Iniciar servidor:
 ```bash
@@ -75,6 +75,20 @@ ADMIN_NAME=Administrador Principal
 ```
 
 Al arrancar el backend se creará (o actualizará) automáticamente ese usuario con rol `admin` y la contraseña hasheada. Si prefieres crear usuarios manualmente en la tabla `usuarios`, recuerda que el campo `password_hash` debe contener la contraseña hasheada con bcrypt.
+
+
+### 2.2 Variables en Netlify
+
+Para desplegar en Netlify con el prebuild de seguridad activo, elimina del panel del sitio cualquier variable cuyo nombre empiece con `SUPABASE_` y crea estas variables privadas:
+
+```env
+PRIVATE_SUPABASE_URL=https://tu-proyecto.supabase.co
+PRIVATE_SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key
+JWT_SECRET=define_un_secreto_largo_y_unico
+FRONTEND_URL=https://tu-sitio.netlify.app
+```
+
+El backend acepta también los nombres `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` para desarrollo local, pero en Netlify los nombres `PRIVATE_*` evitan que el script `frontend/scripts/blockSupabaseEnv.js` aborte el build.
 
 ### 3. Frontend
 
