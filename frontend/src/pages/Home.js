@@ -22,6 +22,24 @@ const DEFAULT_HORARIO = {
 
 const DURACION_MAXIMA = 3;
 
+const CONFIGURACIONES_CANCHA = [
+  {
+    titulo: 'Tres canchas de fútbol 7',
+    descripcion: 'Agenda partidos simultáneos, torneos cortos o entrenamientos por grupos con la misma experiencia premium.',
+    detalle: '3 x F7'
+  },
+  {
+    titulo: 'Una cancha de fútbol 7 + una de fútbol 9',
+    descripcion: 'Une espacios para un formato más amplio cuando el partido o el evento pide más recorrido.',
+    detalle: 'F7 + F9'
+  },
+  {
+    titulo: 'Reserva flexible por horas',
+    descripcion: 'Selecciona bloques consecutivos y deja la solicitud pendiente para aprobación del equipo de cancha.',
+    detalle: '1–3 h'
+  }
+];
+
 const NEQUI_PAYMENT_NUMBER = '3203768582';
 const NEQUI_QR_LINK = process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/qr/2HN5E6CD2BRNJ1';
 const NEQUI_QR_IMAGE_URL =
@@ -532,7 +550,7 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
     {resumenReserva && (
         <div
           className="fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-black bg-opacity-50 px-4 py-6 sm:items-center"
@@ -661,40 +679,97 @@ const Home = () => {
           </div>
         </div>
       )}
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
-          <div>
-            <p className="text-sm font-semibold text-primary uppercase">Reserva pública</p>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mt-1">Cancha Sintética Colgemelli</h1>
-            <p className="text-gray-600 mt-2 max-w-2xl">
-              Agenda tu partido sin registrarte. Elige la fecha y el horario disponibles, completa tus datos y listo.
-            </p>
-        <div className="mt-4 space-y-3 rounded-xl bg-gradient-to-r from-green-50 to-blue-50 p-4 text-gray-800 shadow-sm">
-              <p className="text-lg font-semibold">Horarios y tarifas vigentes</p>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-primary">Público general</p>
-                <p className="text-sm">Lunes a viernes</p>
-                <p className="text-sm">4:00 p.m. a 9:00 p.m.: $130.000 COP por hora</p>
-                <p className="text-sm">Sábados, domingos y festivos</p>
-                <p className="text-sm">Todo el día: $130.000 COP por hora</p>
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <nav className="mb-8 flex items-center justify-between rounded-full border border-white/70 bg-white/80 px-5 py-3 shadow-sm backdrop-blur-xl">
+          <span className="text-sm font-semibold tracking-tight text-gray-900">Sintética Colgemelli</span>
+          <Link
+            to="/login"
+            className="inline-flex items-center justify-center rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
+          >
+            Administración
+          </Link>
+        </nav>
+
+        <header className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+          <div className="grid items-center gap-10 px-6 py-12 md:grid-cols-[1.05fr_0.95fr] md:px-12 lg:px-16 lg:py-16">
+            <div className="text-center md:text-left">
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary">Reserva pública</p>
+              <h1 className="mt-4 text-5xl font-semibold tracking-[-0.05em] text-gray-950 md:text-6xl lg:text-7xl">
+                Tres canchas. Una experiencia más grande.
+              </h1>
+              <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-600 md:mx-0">
+                Ahora puedes jugar en tres canchas de fútbol 7 o transformar el espacio en una cancha de fútbol 7 y una de fútbol 9. Reserva tu horario con una experiencia simple, clara y premium.
+              </p>
+              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row md:justify-start">
+                <a
+                  href="#reservar"
+                  className="rounded-full bg-primary px-6 py-3 text-base font-semibold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-600"
+                >
+                  Reservar ahora
+                </a>
+                <a
+                  href="#configuraciones"
+                  className="rounded-full bg-gray-100 px-6 py-3 text-base font-semibold text-gray-900 transition hover:bg-gray-200"
+                >
+                  Ver configuraciones
+                </a>
               </div>
-              <div className="space-y-2 border-t border-gray-200 pt-3">
-                <p className="text-sm font-semibold text-primary">Tarifa especial – Familia Gemellista</p>
-                <p className="text-sm">Lunes a domingo</p>
-                <p className="text-sm">4:00 p.m. a 9:00 p.m.: $110.000 COP por hora</p>
+            </div>
+            <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] bg-gray-950 p-6 text-white shadow-2xl">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.45),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.38),transparent_25%)]" />
+              <div className="relative flex h-full min-h-[320px] flex-col justify-between rounded-[1.5rem] border border-white/15 bg-white/10 p-5 backdrop-blur">
+                <div className="flex items-center justify-between text-sm text-white/80">
+                  <span>Colgemelli Sports Hub</span>
+                  <span>F7 · F9</span>
+                </div>
+                <div className="grid gap-3">
+                  <div className="h-24 rounded-2xl border border-white/30 bg-emerald-400/25 shadow-inner" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="h-24 rounded-2xl border border-white/30 bg-emerald-400/20 shadow-inner" />
+                    <div className="h-24 rounded-2xl border border-white/30 bg-blue-400/20 shadow-inner" />
+                  </div>
+                </div>
+                <p className="text-3xl font-semibold tracking-tight">3 canchas F7 o formato F7 + F9.</p>
               </div>
             </div>
           </div>
-          <Link
-            to="/login"
-            className="hidden md:inline-flex items-center justify-center px-4 py-2 rounded-lg bg-white text-primary font-semibold border border-primary shadow-sm hover:bg-primary hover:text-white transition"
-          >
-            Acceso para administración
-          </Link>
         </header>
+
+        <section id="configuraciones" className="mt-6 grid gap-4 md:grid-cols-3">
+          {CONFIGURACIONES_CANCHA.map((item) => (
+            <article key={item.titulo} className="rounded-[1.75rem] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+              <div className="mb-8 inline-flex rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900">
+                {item.detalle}
+              </div>
+              <h2 className="text-2xl font-semibold tracking-tight text-gray-950">{item.titulo}</h2>
+              <p className="mt-3 text-gray-600">{item.descripcion}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="mt-6 rounded-[1.75rem] bg-white p-6 shadow-sm md:p-8">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Horarios y tarifas vigentes</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-gray-950">Precios claros antes de jugar.</h2>
+            </div>
+            <div className="grid gap-4 text-sm text-gray-700 sm:grid-cols-2">
+              <div className="rounded-2xl bg-gray-50 p-4">
+                <p className="font-semibold text-gray-950">Público general</p>
+                <p className="mt-2">Lunes a viernes desde 4:00 p.m.: $130.000 COP por hora.</p>
+                <p className="mt-1">Sábados, domingos y festivos: $130.000 COP por hora todo el día.</p>
+              </div>
+              <div className="rounded-2xl bg-emerald-50 p-4">
+                <p className="font-semibold text-gray-950">Familia Gemellista</p>
+                <p className="mt-2">Lunes a domingo desde 4:00 p.m.: $110.000 COP por hora.</p>
+                <p className="mt-1">La tarifa especial se aplica después de validación administrativa.</p>
+              </div>
+            </div>
+          </div>
+        </section>
               
-        <div className="grid md:grid-cols-2 gap-8 items-start">
-          <div className="bg-white rounded-2xl shadow-lg p-8 order-1">
+        <div id="reservar" className="mt-8 grid md:grid-cols-2 gap-8 items-start">
+          <div className="rounded-[1.75rem] bg-white p-6 shadow-sm md:p-8 order-1">
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Reservar un horario</h2>
 
             {mensaje.texto && (
@@ -903,14 +978,14 @@ const Home = () => {
                   horasDisponibles.length === 0 ||
                   horasValidasParaDuracion.length === 0
                 }
-                className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition disabled:bg-gray-400"
+                className="w-full rounded-full bg-primary py-3 font-semibold text-white shadow-lg shadow-emerald-100 transition hover:bg-emerald-600 disabled:bg-gray-400"
               >
                 {enviando ? 'Reservando...' : 'Reservar' }
               </button>
             </form>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-8 order-2">
+          <div className="rounded-[1.75rem] bg-white p-6 shadow-sm md:p-8 order-2">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-sm text-gray-500">Disponibilidad</p>
@@ -1023,7 +1098,7 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="mt-12">
+        <div className="mt-12 rounded-[1.75rem] bg-white p-6 shadow-sm md:p-8">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm text-gray-500">Disponibilidad por día</p>
