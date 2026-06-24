@@ -39,7 +39,8 @@ Sistema completo para gestionar reservas de cancha sintética con diferentes rol
 3. En SQL Editor, ejecutar el script completo de `supabase_schema.sql`
 4. Obtener:
    - URL del proyecto (Settings → API → Project URL)
-   - Anon Key (Settings → API → anon/public)
+   - Service Role Key / Secret Key (Settings → API). Esta llave va solo en el backend.
+   - Anon Key (Settings → API → anon/public), solo si necesitas operaciones públicas desde servidor.
 
 ### 2. Backend
 
@@ -54,6 +55,7 @@ cp .env.example .env
 ```
 
 > **Importante:** En Netlify debes definir estas mismas variables de entorno en la configuración del sitio (Site settings → Environment variables) para que la función `/.netlify/functions/api` pueda conectarse a Supabase.
+> Con RLS activo, `SUPABASE_SERVICE_ROLE_KEY` debe ser la llave secreta/service_role real. Si colocas la anon/public key en esa variable, el login de administrador no podrá leer la tabla `usuarios`.
 
 Iniciar servidor:
 ```bash

@@ -58,9 +58,11 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, usuario };
     } catch (error) {
+      const responseError = error.response?.data;
+
       return {
         success: false,
-        error: error.response?.data?.error || 'Error al iniciar sesión'
+        error: responseError?.message || responseError?.error || 'Error al iniciar sesión'
       };
     }
   };
