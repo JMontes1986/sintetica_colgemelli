@@ -96,58 +96,133 @@ CREATE INDEX IF NOT EXISTS idx_reservas_fecha_hora ON reservas(fecha, hora);
 -- 6. Habilitar Row Level Security (RLS)
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reservas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE configuracion_horarios ENABLE ROW LEVEL SECURITY;
 
--- 7. Políticas de seguridad para usuarios
+-- Permisos base para que las políticas RLS puedan aplicarse con las llaves anon/authenticated.
+-- La llave service_role del backend sigue omitiendo RLS y debe usarse para login, administración y paneles.
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON usuarios TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON reservas TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON configuracion_horarios TO anon, authenticated;
+
+-- 7. Función auxiliar para evaluar roles sin recursión en políticas de usuarios.
+CREATE OR REPLACE FUNCTION public.usuario_actual_tiene_roles(roles_permitidos TEXT[])
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.usuarios u
+    WHERE u.id = auth.uid()
+      AND u.rol = ANY (roles_permitidos)
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.usuario_actual_tiene_roles(TEXT[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.usuario_actual_tiene_roles(TEXT[]) TO anon, authenticated;
+
+-- 8. Políticas de seguridad para usuarios
 DROP POLICY IF EXISTS "Usuarios pueden ver su propio perfil" ON usuarios;
 CREATE POLICY "Usuarios pueden ver su propio perfil"
   ON usuarios FOR SELECT
+  TO authenticated
   USING (auth.uid() = id);
 
-DROP POLICY IF EXISTS "Solo admins pueden ver todos los usuarios" ON usuarios;
-CREATE POLICY "Solo admins pueden ver todos los usuarios"
+DROP POLICY IF EXISTS "Admins pueden ver todos los usuarios" ON usuarios;
+CREATE POLICY "Admins pueden ver todos los usuarios"
   ON usuarios FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM usuarios 
-      WHERE id = auth.uid() AND rol = 'admin'
-    )
-  );
+  TO authenticated
+  USING (public.usuario_actual_tiene_roles(ARRAY['admin']));
 
--- 8. Políticas de seguridad para reservas
+DROP POLICY IF EXISTS "Admins pueden crear usuarios" ON usuarios;
+CREATE POLICY "Admins pueden crear usuarios"
+  ON usuarios FOR INSERT
+  TO authenticated
+  WITH CHECK (public.usuario_actual_tiene_roles(ARRAY['admin']));
+
+DROP POLICY IF EXISTS "Admins pueden actualizar usuarios" ON usuarios;
+CREATE POLICY "Admins pueden actualizar usuarios"
+  ON usuarios FOR UPDATE
+  TO authenticated
+  USING (public.usuario_actual_tiene_roles(ARRAY['admin']))
+  WITH CHECK (public.usuario_actual_tiene_roles(ARRAY['admin']));
+
+DROP POLICY IF EXISTS "Admins pueden eliminar usuarios" ON usuarios;
+CREATE POLICY "Admins pueden eliminar usuarios"
+  ON usuarios FOR DELETE
+  TO authenticated
+  USING (public.usuario_actual_tiene_roles(ARRAY['admin']));
+
+-- Eliminar nombres antiguos para evitar políticas duplicadas en instalaciones previas.
+DROP POLICY IF EXISTS "Solo admins pueden ver todos los usuarios" ON usuarios;
+
+-- 9. Políticas de seguridad para reservas
+DROP POLICY IF EXISTS "Publico puede consultar disponibilidad" ON reservas;
+CREATE POLICY "Publico puede consultar disponibilidad"
+  ON reservas FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
 DROP POLICY IF EXISTS "Todos pueden crear reservas" ON reservas;
 CREATE POLICY "Todos pueden crear reservas"
   ON reservas FOR INSERT
-  WITH CHECK (true);
+  TO anon, authenticated
+  WITH CHECK (
+    estado = 'Pendiente'
+    AND pago_registrado = FALSE
+    AND creado_por IS NULL
+  );
+
+DROP POLICY IF EXISTS "Operadores cancha pueden crear reservas" ON reservas;
+CREATE POLICY "Operadores cancha pueden crear reservas"
+  ON reservas FOR INSERT
+  TO authenticated
+  WITH CHECK (public.usuario_actual_tiene_roles(ARRAY['cancha', 'admin']));
 
 DROP POLICY IF EXISTS "Operadores cancha pueden ver reservas" ON reservas;
 CREATE POLICY "Operadores cancha pueden ver reservas"
   ON reservas FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM usuarios 
-      WHERE id = auth.uid() AND rol IN ('cancha', 'admin')
-    )
-  );
+  TO authenticated
+  USING (public.usuario_actual_tiene_roles(ARRAY['cancha', 'admin']));
 
 DROP POLICY IF EXISTS "Operadores cancha pueden actualizar reservas" ON reservas;
 CREATE POLICY "Operadores cancha pueden actualizar reservas"
   ON reservas FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM usuarios 
-      WHERE id = auth.uid() AND rol IN ('cancha', 'admin')
-    )
-  );
+  TO authenticated
+  USING (public.usuario_actual_tiene_roles(ARRAY['cancha', 'admin']))
+  WITH CHECK (public.usuario_actual_tiene_roles(ARRAY['cancha', 'admin']));
 
 DROP POLICY IF EXISTS "Solo admins pueden eliminar reservas" ON reservas;
 CREATE POLICY "Solo admins pueden eliminar reservas"
   ON reservas FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM usuarios 
-      WHERE id = auth.uid() AND rol = 'admin'
-    )
-  );
+  TO authenticated
+  USING (public.usuario_actual_tiene_roles(ARRAY['admin']));
+
+-- 10. Políticas de seguridad para configuración de horarios
+DROP POLICY IF EXISTS "Publico puede ver configuracion de horarios" ON configuracion_horarios;
+CREATE POLICY "Publico puede ver configuracion de horarios"
+  ON configuracion_horarios FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Admins pueden crear configuracion de horarios" ON configuracion_horarios;
+CREATE POLICY "Admins pueden crear configuracion de horarios"
+  ON configuracion_horarios FOR INSERT
+  TO authenticated
+  WITH CHECK (public.usuario_actual_tiene_roles(ARRAY['admin']));
+
+DROP POLICY IF EXISTS "Admins pueden actualizar configuracion de horarios" ON configuracion_horarios;
+CREATE POLICY "Admins pueden actualizar configuracion de horarios"
+  ON configuracion_horarios FOR UPDATE
+  TO authenticated
+  USING (public.usuario_actual_tiene_roles(ARRAY['admin']))
+  WITH CHECK (public.usuario_actual_tiene_roles(ARRAY['admin']));
+
+DROP POLICY IF EXISTS "Admins pueden eliminar configuracion de horarios" ON configuracion_horarios;
+CREATE POLICY "Admins pueden eliminar configuracion de horarios"
+  ON configuracion_horarios FOR DELETE
+  TO authenticated
+  USING (public.usuario_actual_tiene_roles(ARRAY['admin']));
 
 -- 9. Función para actualizar timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
