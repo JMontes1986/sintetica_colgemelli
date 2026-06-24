@@ -97,8 +97,8 @@ router.post('/login', async (req, res) => {
     console.error('Error en login:', error);
     if (
       error.code === 'SUPABASE_CONFIG_MISSING' ||
-      error.code === 'JWT_SECRET_MISSING' ||
-      error.code === 'JWT_SECRET_WEAK'
+      error.code === 'AUTH_SECRET_MISSING' ||
+      error.code === 'AUTH_SECRET_WEAK'
     ) {
       return res.status(503).json({ error: error.message });
     }

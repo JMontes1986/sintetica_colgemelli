@@ -90,7 +90,7 @@ const verificarToken = async (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Token no proporcionado' });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.AUTH_TOKEN_SECRET);
     const { data: usuario } = await supabase
       .from('usuarios')
       .select('*')
@@ -136,7 +136,7 @@ app.post('/auth/login', async (req, res) => {
 
     const token = jwt.sign(
       { userId: usuario.id, email: usuario.email, rol: usuario.rol },
-      process.env.JWT_SECRET,
+      process.env.AUTH_TOKEN_SECRET,
       { expiresIn: '24h' }
     );
 
@@ -518,7 +518,7 @@ const api = axios.create({
    ```
    SUPABASE_URL=tu_url_supabase
    SUPABASE_ANON_KEY=tu_anon_key
-   JWT_SECRET=tu_secreto_jwt
+   AUTH_TOKEN_SECRET=tu_secreto_jwt
    ```
 7. Deploy
 
@@ -537,7 +537,7 @@ netlify init
 # Configurar variables de entorno
 netlify env:set SUPABASE_URL "tu_url"
 netlify env:set SUPABASE_ANON_KEY "tu_key"
-netlify env:set JWT_SECRET "tu_secreto"
+netlify env:set AUTH_TOKEN_SECRET "tu_secreto"
 
 # Desplegar
 netlify deploy --prod
@@ -566,7 +566,7 @@ railway up
 # Configurar variables
 railway variables set SUPABASE_URL=tu_url
 railway variables set SUPABASE_ANON_KEY=tu_key
-railway variables set JWT_SECRET=tu_secreto
+railway variables set AUTH_TOKEN_SECRET=tu_secreto
 ```
 
 ### Frontend en Netlify

@@ -19,7 +19,7 @@ Ya está configurado si seguiste los pasos de instalación. Supabase es cloud-na
      ```
      SUPABASE_URL=tu_url
      SUPABASE_ANON_KEY=tu_key
-     JWT_SECRET=tu_secreto
+     AUTH_TOKEN_SECRET=tu_secreto
      PORT=5000
      FRONTEND_URL=tu_url_frontend
      ```
@@ -37,7 +37,7 @@ Ya está configurado si seguiste los pasos de instalación. Supabase es cloud-na
 heroku create nombre-app-backend
 heroku config:set SUPABASE_URL=tu_url
 heroku config:set SUPABASE_ANON_KEY=tu_key
-heroku config:set JWT_SECRET=tu_secreto
+heroku config:set AUTH_TOKEN_SECRET=tu_secreto
 git push heroku main
 ```
 
@@ -131,7 +131,7 @@ npm run build
 ### Backend
 - `SUPABASE_URL` - URL de tu proyecto Supabase
 - `SUPABASE_ANON_KEY` - Anon key de Supabase
-- `JWT_SECRET` - Secreto para tokens JWT (genera uno seguro)
+- `AUTH_TOKEN_SECRET` - Secreto para tokens JWT (genera uno seguro)
 - `PORT` - Puerto del servidor (opcional, default: 5000)
 - `FRONTEND_URL` - URL del frontend para CORS
 
@@ -140,7 +140,7 @@ npm run build
 
 ## Seguridad en Producción
 
-1. **JWT_SECRET**: Usar un secreto fuerte y único
+1. **AUTH_TOKEN_SECRET**: Usar un secreto fuerte y único
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
@@ -178,7 +178,7 @@ Supabase Dashboard → Logs
 - Comprobar conexión a Supabase
 
 ### Error de autenticación
-- Verificar JWT_SECRET
+- Verificar AUTH_TOKEN_SECRET
 - Limpiar localStorage
 - Revisar logs de red en DevTools
 

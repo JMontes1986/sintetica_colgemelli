@@ -84,7 +84,7 @@ Para desplegar en Netlify con el prebuild de seguridad activo, crea estas variab
 ```env
 PRIVATE_SUPABASE_URL=https://tu-proyecto.supabase.co
 PRIVATE_SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key
-JWT_SECRET=define_un_secreto_largo_y_unico
+AUTH_TOKEN_SECRET=define_un_secreto_largo_y_unico
 FRONTEND_URL=https://tu-sitio.netlify.app
 ```
 
@@ -234,7 +234,7 @@ colors: {
 
 ### Error de autenticación
 - Limpiar localStorage del navegador
-- Verificar JWT_SECRET en backend `.env`
+- Verificar AUTH_TOKEN_SECRET en backend `.env`
 - Revisar que los usuarios existen en la base de datos
 
 ## 📝 Notas de Desarrollo
