@@ -14,10 +14,11 @@ const PUBLIC_SUPABASE_KEY_ROLES = ['anon', 'publishable'];
 
 const ensureServiceRole = () => {
   const supabaseStatus = getSupabase.getStatus?.();
-  const isPublicKey = PUBLIC_SUPABASE_KEY_ROLES.includes(supabaseStatus?.selectedKeyRole);
+  const selectedPublicKeyRole = PUBLIC_SUPABASE_KEY_ROLES.includes(supabaseStatus?.selectedKeyRole);
   const hasExplicitServiceRoleEnv =
-    supabaseStatus?.serviceRoleKeyPresent && !supabaseStatus?.serviceRoleKeyMisconfigured;
+    supabaseStatus?.serviceRoleKeyPresent || supabaseStatus?.keyType === 'service_role';
   const isServiceRole = supabaseStatus?.keyType === 'service_role' || hasExplicitServiceRoleEnv;
+  const isPublicKey = selectedPublicKeyRole && !hasExplicitServiceRoleEnv;
 
   return {
     isServiceRole,
@@ -62,11 +63,18 @@ router.post('/login', async (req, res) => {
       }
 
       if (error.code === '42501') {
+        const serviceRoleSource = supabaseStatus?.selectedKeySource || 'SUPABASE_SERVICE_ROLE_KEY';
+        const serviceRoleMessage = supabaseStatus?.serviceRoleKeyMisconfigured
+          ? `La variable ${serviceRoleSource} existe, pero su valor parece ser una key publica/anon. Reemplazala por la service_role key secreta real de Supabase.`
+          : 'RLS esta activo en la tabla usuarios y la clave actual no tiene permisos. Usa PRIVATE_SUPABASE_SERVICE_ROLE_KEY o SUPABASE_SERVICE_ROLE_KEY con la service_role key real.';
+
         return res.status(503).json({
           error: 'Servicio de autenticación no disponible',
-          message:
-            'RLS está activo en la tabla usuarios y la clave actual no tiene permisos. Usa PRIVATE_SUPABASE_SERVICE_ROLE_KEY en Netlify (o SUPABASE_SERVICE_ROLE_KEY en local).',
-          detalle: error
+          message: serviceRoleMessage,
+          detalle: {
+            supabase: supabaseStatus,
+            supabaseError: error
+          }
         });
       }
       
