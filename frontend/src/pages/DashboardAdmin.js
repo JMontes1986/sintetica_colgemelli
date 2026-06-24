@@ -17,6 +17,10 @@ const DIAS_SEMANA = [
 ];
 
 const DIAS_CALENDARIO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const CAPACIDAD_CANCHAS = 3;
+const HORA_APERTURA_DEFAULT = 8;
+const HORA_CIERRE_DEFAULT = 21;
+const HORAS_OPERATIVAS_DEFAULT = HORA_CIERRE_DEFAULT - HORA_APERTURA_DEFAULT + 1;
 
 const obtenerDiasMes = (mesActual) => {
   const fechaBase = new Date(`${mesActual}-01T00:00:00`);
@@ -104,15 +108,13 @@ const DashboardAdmin = () => {
 
   const cargarReservas = useCallback(async () => {
     try {
-      const estadoPorFiltro = { pendientes: 'Pendiente', aprobadas: 'Aprobado', jugadas: 'Jugado' };
-      const params = filtro !== 'todas' ? { estado: estadoPorFiltro[filtro] } : {};
-      const response = await reservasAPI.obtenerTodas(params);
+      const response = await reservasAPI.obtenerTodas();
       setReservas(response.data.reservas);
     } catch (error) {
       console.error('Error al cargar reservas:', error);
       setMensaje({ tipo: 'error', texto: 'Error al cargar las reservas' });
     }
-  }, [filtro]);
+  }, []);
 
   const cargarHorarios = useCallback(async () => {
     setCargandoHorarios(true);
@@ -153,7 +155,7 @@ const DashboardAdmin = () => {
     setLoading(true);
     try {
       if (vistaActual === 'estadisticas') {
-        await Promise.all([cargarEstadisticas(), cargarRecaudo()]);
+        await Promise.all([cargarEstadisticas(), cargarRecaudo(), cargarReservas()]);
       } else {
         await Promise.all([cargarReservas(), cargarHorarios()]);
       }
@@ -383,7 +385,7 @@ const DashboardAdmin = () => {
   });
 
   const esFinDeSemana = (fecha) => {
-    const fechaBase = new Date(fecha);
+    const fechaBase = new Date(`${fecha}T00:00:00`);
     const diaSemana = fechaBase.getDay();
 
     if (Number.isNaN(diaSemana)) return false;
@@ -408,11 +410,88 @@ const DashboardAdmin = () => {
 
     return horaEntera >= 17 ? 130000 : 100000;
   };
+
+  const formatearFechaCorta = (fecha) =>
+    format(new Date(`${fecha}T00:00:00`), 'd MMM', { locale: es });
+
+  const hoy = format(new Date(), 'yyyy-MM-dd');
+  const finProximos7Dias = format(
+    new Date(new Date(`${hoy}T00:00:00`).setDate(new Date(`${hoy}T00:00:00`).getDate() + 7)),
+    'yyyy-MM-dd'
+  );
+
+  const reservasOrdenadas = [...reservas].sort((a, b) =>
+    `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`)
+  );
+  const reservasHoy = reservas.filter((reserva) => reserva.fecha === hoy);
+  const reservasProximos7Dias = reservas.filter(
+    (reserva) => reserva.fecha >= hoy && reserva.fecha <= finProximos7Dias && reserva.estado !== 'Jugado'
+  );
+  const reservasPendientes = reservas.filter((reserva) => reserva.estado === 'Pendiente');
+  const reservasAprobadas = reservas.filter((reserva) => reserva.estado === 'Aprobado');
+  const reservasJugadas = reservas.filter((reserva) => reserva.estado === 'Jugado');
+  const pagosPendientes = reservas.filter((reserva) => !reserva.pago_registrado && reserva.estado !== 'Pendiente');
+  const solicitudesGemellistaPendientes = reservas.filter(
+    (reserva) => esSolicitudGemellista(reserva) && reserva.estado_gemellista === 'Pendiente'
+  );
+  const reservasMesActual = reservas.filter((reserva) => reserva.fecha?.startsWith(format(new Date(), 'yyyy-MM')));
+  const ingresosConfirmados = reservas
+    .filter((reserva) => reserva.pago_registrado)
+    .reduce((total, reserva) => total + calcularValorReserva(reserva), 0);
+  const ingresosPorCobrar = pagosPendientes.reduce((total, reserva) => total + calcularValorReserva(reserva), 0);
+  const ingresosMesEstimados = reservasMesActual.reduce((total, reserva) => total + calcularValorReserva(reserva), 0);
+  const capacidadDiaria = CAPACIDAD_CANCHAS * HORAS_OPERATIVAS_DEFAULT;
+  const ocupacionHoy = capacidadDiaria > 0 ? Math.round((reservasHoy.length / capacidadDiaria) * 100) : 0;
+  const cumplimientoReservas =
+    reservas.length > 0 ? Math.round((reservasJugadas.length / reservas.length) * 100) : 0;
+  const ticketPromedio =
+    reservas.filter((reserva) => reserva.pago_registrado).length > 0
+      ? Math.round(ingresosConfirmados / reservas.filter((reserva) => reserva.pago_registrado).length)
+      : 0;
+  const proximaReserva = reservasOrdenadas.find(
+    (reserva) => reserva.fecha >= hoy && reserva.estado !== 'Jugado'
+  );
+  const reservasPorDiaChart = reservasPorDia.map((item) => ({
+    ...item,
+    fechaLabel: formatearFechaCorta(item.fecha)
+  }));
+  const reservasPorMesChart = reservasPorMes.map((item) => ({
+    ...item,
+    mesLabel: format(new Date(`${item.mes}-01T00:00:00`), 'MMM yy', { locale: es })
+  }));
+  const metricasPrincipales = [
+    {
+      titulo: 'Ocupación hoy',
+      valor: `${ocupacionHoy}%`,
+      detalle: `${reservasHoy.length} de ${capacidadDiaria} bloques estimados`,
+      clase: 'border-emerald-100 bg-white'
+    },
+    {
+      titulo: 'Próximos 7 días',
+      valor: reservasProximos7Dias.length,
+      detalle: `${reservasAprobadas.length} aprobadas activas`,
+      clase: 'border-blue-100 bg-white'
+    },
+    {
+      titulo: 'Por cobrar',
+      valor: currencyFormatter.format(ingresosPorCobrar),
+      detalle: `${pagosPendientes.length} reservas aprobadas o jugadas sin pago`,
+      clase: 'border-amber-100 bg-white'
+    },
+    {
+      titulo: 'Familia Gemellista',
+      valor: solicitudesGemellistaPendientes.length,
+      detalle: 'Solicitudes pendientes de validación',
+      clase: 'border-rose-100 bg-white'
+    }
+  ];
+  const resumenEstados = [
+    { name: 'Pendientes', value: reservasPendientes.length },
+    { name: 'Aprobadas', value: reservasAprobadas.length },
+    { name: 'Jugadas', value: reservasJugadas.length }
+  ];
   
-  const dataPie = estadisticasGenerales ? [
-    { name: 'Jugadas', value: estadisticasGenerales.reservasJugadas },
-    { name: 'Pendientes', value: estadisticasGenerales.reservasPendientes }
-  ] : [];
+  const dataPie = resumenEstados.filter((item) => item.value > 0);
 
   const getEstadoGemellistaStyles = (estado) => {
     if (estado === 'Aprobado') return 'bg-green-100 text-green-800';
@@ -571,48 +650,48 @@ const DashboardAdmin = () => {
       </div>
     )}
       
-      <header className="bg-white shadow-md">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-primary">Panel Administrador</h1>
-              <p className="text-gray-600 text-sm">Bienvenido, {usuario?.nombre}</p>
+      <header className="border-b border-gray-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">Administración</p>
+            <h1 className="text-2xl font-semibold text-gray-950">Sintética Colgemelli</h1>
+            <p className="text-sm text-gray-500">Bienvenido, {usuario?.nombre}</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-full border border-gray-200 bg-gray-100 p-1">
+              <button
+                onClick={() => setVistaActual('estadisticas')}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  vistaActual === 'estadisticas'
+                    ? 'bg-white text-gray-950 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-950'
+                }`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => setVistaActual('reservas')}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  vistaActual === 'reservas'
+                    ? 'bg-white text-gray-950 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-950'
+                }`}
+              >
+                Reservas
+              </button>
             </div>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+              className="rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
             >
-              Cerrar Sesión
-            </button>
-          </div>
-
-          {/* Navegación */}
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => setVistaActual('estadisticas')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                vistaActual === 'estadisticas'
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-              }`}
-            >
-              📊 Estadísticas
-            </button>
-            <button
-              onClick={() => setVistaActual('reservas')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                vistaActual === 'reservas'
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-              }`}
-            >
-              📋 Gestión de Reservas
+              Cerrar sesión
             </button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Mensajes */}
         {mensaje.texto && (
           <div
@@ -627,211 +706,283 @@ const DashboardAdmin = () => {
         )}
 
         {loading ? (
-          <div className="text-center py-12">
-            <div className="text-xl text-gray-500">Cargando datos...</div>
+          <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-gray-200 bg-white">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-emerald-500" />
+              <div className="text-lg font-semibold text-gray-700">Cargando operación...</div>
+            </div>
           </div>
         ) : vistaActual === 'estadisticas' ? (
           /* VISTA DE ESTADÍSTICAS */
-          <div>
-            {/* Tarjetas de métricas */}
-            {estadisticasGenerales && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-500 text-sm font-medium">Total Reservas</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-2">
-                        {estadisticasGenerales.totalReservas}
-                      </p>
-                    </div>
-                    <div className="bg-blue-100 rounded-full p-3">
-                      <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                    </div>
+          <div className="space-y-6">
+            <section className="overflow-hidden rounded-2xl bg-gray-950 text-white shadow-xl">
+              <div className="grid gap-8 p-6 md:p-8 lg:grid-cols-[1.25fr_0.75fr]">
+                <div className="flex flex-col justify-between gap-8">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-emerald-300">Operación diaria</p>
+                    <h2 className="mt-3 max-w-3xl text-4xl font-semibold leading-tight md:text-5xl">
+                      Tres canchas listas para vender mejor cada bloque horario.
+                    </h2>
+                    <p className="mt-4 max-w-2xl text-base text-gray-300">
+                      Vista ejecutiva para ocupación, recaudo, pagos pendientes y solicitudes familiares en una sola pantalla.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => {
+                        setVistaActual('reservas');
+                        setMostrarFormulario(true);
+                      }}
+                      className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-gray-950 transition hover:bg-gray-100"
+                    >
+                      Nueva reserva
+                    </button>
+                    <button
+                      onClick={() => setVistaActual('reservas')}
+                      className="rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                    >
+                      Gestionar agenda
+                    </button>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-500 text-sm font-medium">Reservas Jugadas</p>
-                      <p className="text-3xl font-bold text-green-600 mt-2">
-                        {estadisticasGenerales.reservasJugadas}
-                      </p>
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-5">
+                  <p className="text-sm text-gray-300">Próxima reserva</p>
+                  {proximaReserva ? (
+                    <div className="mt-4">
+                      <p className="text-3xl font-semibold">{proximaReserva.hora}</p>
+                      <p className="mt-1 text-gray-200">{formatearFechaCorta(proximaReserva.fecha)}</p>
+                      <p className="mt-4 text-lg font-semibold">{proximaReserva.nombre_cliente}</p>
+                      <p className="text-sm text-gray-300">{proximaReserva.estado}</p>
                     </div>
-                    <div className="bg-green-100 rounded-full p-3">
-                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                  ) : (
+                    <p className="mt-4 text-lg font-semibold text-gray-200">No hay reservas activas próximas.</p>
+                  )}
+                  <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-xl bg-white/10 p-3">
+                      <p className="text-gray-300">Capacidad diaria</p>
+                      <p className="mt-1 text-xl font-semibold">{capacidadDiaria}</p>
                     </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-500 text-sm font-medium">Reservas Pendientes</p>
-                      <p className="text-3xl font-bold text-yellow-600 mt-2">
-                        {estadisticasGenerales.reservasPendientes}
-                      </p>
-                    </div>
-                    <div className="bg-yellow-100 rounded-full p-3">
-                      <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-lg p-6 md:col-span-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-                        <select
-                          value={filtroRecaudo.tipo}
-                          onChange={(e) => {
-                            const tipo = e.target.value;
-                            setFiltroRecaudo({
-                              tipo,
-                              valor:
-                                tipo === 'mes'
-                                  ? format(new Date(), 'yyyy-MM')
-                                  : format(new Date(), 'yyyy-MM-dd')
-                            });
-                          }}
-                          className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="dia">Por día</option>
-                          <option value="mes">Por mes</option>
-                        </select>
-
-                        <input
-                          type={filtroRecaudo.tipo === 'mes' ? 'month' : 'date'}
-                          value={filtroRecaudo.valor}
-                          onChange={(e) =>
-                            setFiltroRecaudo((prev) => ({ ...prev, valor: e.target.value }))
-                          }
-                          className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-
-                      <p className="text-gray-500 text-sm font-medium">Recaudado</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-2">
-                        {cargandoRecaudo ? 'Calculando...' : currencyFormatter.format(recaudo.total)}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Pagos confirmados: {recaudo.reservasPagadas} · Valor por reserva:{' '}
-                        {currencyFormatter.format(recaudo.precioUnitario)}
-                      </p>
-                    </div>
-
-                    <div className="bg-primary/10 rounded-full p-3 text-primary">
-                      <svg
-                        className="w-8 h-8"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V5m0 11v3m7-12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
+                    <div className="rounded-xl bg-white/10 p-3">
+                      <p className="text-gray-300">Bloques hoy</p>
+                      <p className="mt-1 text-xl font-semibold">{reservasHoy.length}</p>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+            </section>
 
-            {/* Gráficos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Gráfico de Pie */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">Distribución de Reservas</h3>
-                <ResponsiveContainer width="100%" height={300}>
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {metricasPrincipales.map((metrica) => (
+                <div key={metrica.titulo} className={`rounded-2xl border p-5 shadow-sm ${metrica.clase}`}>
+                  <p className="text-sm font-medium text-gray-500">{metrica.titulo}</p>
+                  <p className="mt-3 text-3xl font-semibold text-gray-950">{metrica.valor}</p>
+                  <p className="mt-2 text-sm text-gray-500">{metrica.detalle}</p>
+                </div>
+              ))}
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-gray-500">Reservas totales</p>
+                <p className="mt-3 text-4xl font-semibold text-gray-950">
+                  {estadisticasGenerales?.totalReservas ?? reservas.length}
+                </p>
+                <p className="mt-2 text-sm text-gray-500">{cumplimientoReservas}% ya fueron marcadas como jugadas</p>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-gray-500">Ingresos confirmados</p>
+                <p className="mt-3 text-4xl font-semibold text-gray-950">{currencyFormatter.format(ingresosConfirmados)}</p>
+                <p className="mt-2 text-sm text-gray-500">Ticket promedio: {currencyFormatter.format(ticketPromedio)}</p>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <select
+                    value={filtroRecaudo.tipo}
+                    onChange={(e) => {
+                      const tipo = e.target.value;
+                      setFiltroRecaudo({
+                        tipo,
+                        valor:
+                          tipo === 'mes'
+                            ? format(new Date(), 'yyyy-MM')
+                            : format(new Date(), 'yyyy-MM-dd')
+                      });
+                    }}
+                    className="rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="dia">Por día</option>
+                    <option value="mes">Por mes</option>
+                  </select>
+
+                  <input
+                    type={filtroRecaudo.tipo === 'mes' ? 'month' : 'date'}
+                    value={filtroRecaudo.valor}
+                    onChange={(e) =>
+                      setFiltroRecaudo((prev) => ({ ...prev, valor: e.target.value }))
+                    }
+                    className="rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <p className="text-sm font-medium text-gray-500">Recaudo filtrado</p>
+                <p className="mt-3 text-4xl font-semibold text-gray-950">
+                  {cargandoRecaudo ? 'Calculando...' : currencyFormatter.format(recaudo.total)}
+                </p>
+                <p className="mt-2 text-sm text-gray-500">
+                  {recaudo.reservasPagadas} pagos confirmados por API
+                </p>
+              </div>
+            </section>
+
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-950">Estado de reservas</h3>
+                    <p className="text-sm text-gray-500">Pendientes, aprobadas y jugadas.</p>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie
                       data={dataPie}
                       cx="50%"
                       cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
+                      innerRadius={58}
+                      outerRadius={92}
+                      paddingAngle={4}
                       dataKey="value"
                     >
                       {dataPie.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
+                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* Gráfico de barras - Últimos 30 días */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">Reservas por Día (Últimos 30 días)</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={reservasPorDia}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="fecha" tick={{ fontSize: 12 }} />
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-950">Demanda de los últimos 30 días</h3>
+                  <p className="text-sm text-gray-500">Lectura rápida de volumen y reservas jugadas.</p>
+                </div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={reservasPorDiaChart}>
+                    <CartesianGrid stroke="#eef2f7" vertical={false} />
+                    <XAxis dataKey="fechaLabel" tick={{ fontSize: 12 }} />
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="total" fill="#10b981" name="Total" />
-                    <Bar dataKey="jugadas" fill="#3b82f6" name="Jugadas" />
+                    <Bar dataKey="total" fill="#10b981" name="Total" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="jugadas" fill="#3b82f6" name="Jugadas" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </section>
 
-            {/* Gráfico de línea - Por mes */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">Tendencia Mensual (Último año)</h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={reservasPorMes}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="mes" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="total" stroke="#10b981" strokeWidth={2} name="Total" />
-                  <Line type="monotone" dataKey="jugadas" stroke="#3b82f6" strokeWidth={2} name="Jugadas" />
-                  <Line type="monotone" dataKey="pendientes" stroke="#f59e0b" strokeWidth={2} name="Pendientes" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-950">Tendencia anual</h3>
+                  <p className="text-sm text-gray-500">Evolución mensual por estado de reserva.</p>
+                </div>
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={reservasPorMesChart}>
+                    <CartesianGrid stroke="#eef2f7" vertical={false} />
+                    <XAxis dataKey="mesLabel" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="total" stroke="#10b981" strokeWidth={3} name="Total" dot={false} />
+                    <Line type="monotone" dataKey="jugadas" stroke="#3b82f6" strokeWidth={3} name="Jugadas" dot={false} />
+                    <Line type="monotone" dataKey="pendientes" stroke="#f59e0b" strokeWidth={3} name="Pendientes" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-950">Focos de atención</h3>
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                    <p className="text-sm font-semibold text-amber-800">Pagos por registrar</p>
+                    <p className="mt-1 text-2xl font-semibold text-amber-950">{pagosPendientes.length}</p>
+                    <p className="text-sm text-amber-800">{currencyFormatter.format(ingresosPorCobrar)} por conciliar</p>
+                  </div>
+                  <div className="rounded-xl border border-rose-100 bg-rose-50 p-4">
+                    <p className="text-sm font-semibold text-rose-800">Validación familiar</p>
+                    <p className="mt-1 text-2xl font-semibold text-rose-950">{solicitudesGemellistaPendientes.length}</p>
+                    <p className="text-sm text-rose-800">Solicitudes esperando aprobación</p>
+                  </div>
+                  <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                    <p className="text-sm font-semibold text-blue-800">Mes actual</p>
+                    <p className="mt-1 text-2xl font-semibold text-blue-950">{reservasMesActual.length} reservas</p>
+                    <p className="text-sm text-blue-800">{currencyFormatter.format(ingresosMesEstimados)} estimados</p>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         ) : (
           /* VISTA DE GESTIÓN DE RESERVAS */
-          <div>
+          <div className="space-y-6">
+            <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">Gestión de agenda</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-gray-950">Reservas y horarios</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Administra solicitudes, pagos, reprogramaciones y rangos de atención.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-xl bg-gray-50 px-4 py-3">
+                    <p className="text-xs font-semibold text-gray-500">Pendientes</p>
+                    <p className="mt-1 text-2xl font-semibold text-gray-950">{reservasPendientes.length}</p>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 px-4 py-3">
+                    <p className="text-xs font-semibold text-gray-500">Aprobadas</p>
+                    <p className="mt-1 text-2xl font-semibold text-gray-950">{reservasAprobadas.length}</p>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 px-4 py-3">
+                    <p className="text-xs font-semibold text-gray-500">Sin pago</p>
+                    <p className="mt-1 text-2xl font-semibold text-gray-950">{pagosPendientes.length}</p>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 px-4 py-3">
+                    <p className="text-xs font-semibold text-gray-500">Hoy</p>
+                    <p className="mt-1 text-2xl font-semibold text-gray-950">{reservasHoy.length}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             {/* Acciones */}
-            <div className="mb-6 flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setMostrarFormulario(!mostrarFormulario)}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600 transition"
+                className="rounded-full bg-gray-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
               >
-                {mostrarFormulario ? 'Cancelar' : '+ Nueva Reserva'}
+                {mostrarFormulario ? 'Cerrar formulario' : 'Nueva reserva'}
               </button>
               <button
                 onClick={() => {
                   cargarReservas();
                   cargarHorarios();
                 }}
-                className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-blue-600 transition"
+                className="rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
               >
-                🔄 Actualizar
+                Actualizar
               </button>
             </div>
 
             {/* Formulario Nueva Reserva */}
             {mostrarFormulario && (
-              <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                 <h3 className="text-xl font-semibold mb-4">Crear Reserva Manual</h3>
                 <form onSubmit={crearReservaManual} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
@@ -922,7 +1073,7 @@ const DashboardAdmin = () => {
                   </div>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-600 transition"
+                    className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-green-600"
                   >
                     Crear Reserva
                   </button>
@@ -931,24 +1082,24 @@ const DashboardAdmin = () => {
             )}
 
             {/* Filtros */}
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={() => setFiltro('todas')}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                     filtro === 'todas'
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                      ? 'bg-gray-950 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   Todas
                 </button>
                 <button
                   onClick={() => setFiltro('pendientes')}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                     filtro === 'pendientes'
                       ? 'bg-yellow-500 text-white'
-                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   Pendientes
@@ -956,10 +1107,10 @@ const DashboardAdmin = () => {
 
                 <button
                   onClick={() => setFiltro('aprobadas')}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                     filtro === 'aprobadas'
                       ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   Aprobadas
@@ -967,32 +1118,32 @@ const DashboardAdmin = () => {
                     
                 <button
                   onClick={() => setFiltro('jugadas')}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                     filtro === 'jugadas'
                       ? 'bg-green-500 text-white'
-                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   Jugadas
                 </button>
 
-                    <div className="ml-auto flex flex-wrap items-center gap-2">
+                <div className="ml-auto flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setVistaReservas('tabla')}
-                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                       vistaReservas === 'tabla'
                         ? 'bg-secondary text-white'
-                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     Tabla
                   </button>
                   <button
                     onClick={() => setVistaReservas('calendario')}
-                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                       vistaReservas === 'calendario'
                         ? 'bg-secondary text-white'
-                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     Calendario
@@ -1002,7 +1153,7 @@ const DashboardAdmin = () => {
                       type="month"
                       value={mesCalendario}
                       onChange={(e) => setMesCalendario(e.target.value)}
-                      className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 focus:ring-2 focus:ring-primary"
+                      className="rounded-full border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-primary"
                     />
                   )}
                 </div>
@@ -1280,7 +1431,7 @@ const DashboardAdmin = () => {
                                     onClick={() => abrirModalEdicion(reserva)}
                                     className="px-3 py-1 rounded bg-indigo-500 text-white text-sm hover:bg-indigo-600"
                                   >
-                                    ✏️ Editar
+                                    Editar
                                   </button>
                                   <button
                                     onClick={() => abrirModalPago(reserva)}
@@ -1301,14 +1452,14 @@ const DashboardAdmin = () => {
                                       onClick={() => cambiarEstado(reserva.id, 'Jugado')}
                                       className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
                                     >
-                                      ✓ Jugado
+                                      Marcar jugado
                                     </button>
                                   )}
                                   <button
                                     onClick={() => eliminarReserva(reserva.id)}
                                     className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
                                   >
-                                    🗑 Eliminar
+                                    Eliminar
                                   </button>
                                 </div>
                               </td>
