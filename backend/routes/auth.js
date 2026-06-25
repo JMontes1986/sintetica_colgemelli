@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const getSupabase = require('../config/supabase');
 const { verificarToken } = require('../middleware/auth');
 const { getJwtSecret } = require('../utils/env');
+const { ensureDefaultAdmin } = require('../utils/ensureAdminUser');
 
 const router = express.Router();
 
@@ -12,6 +13,13 @@ const normalizeEmail = (valor) => valor?.toString().trim().toLowerCase() || '';
 const isPasswordFuerte = (valor) => typeof valor === 'string' && valor.length >= 8;
 const ROLES_PERMITIDOS = ['admin', 'cancha', 'publico'];
 const PUBLIC_SUPABASE_KEY_ROLES = ['anon', 'publishable'];
+
+const shouldSyncConfiguredAdmin = (email, password) => {
+  const adminEmail = normalizeEmail(process.env.ADMIN_EMAIL);
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  return Boolean(adminEmail && adminPassword && email === adminEmail && password === adminPassword);
+};
 
 const ensureServiceRole = () => {
   const supabaseStatus = getSupabase.getStatus?.();
@@ -49,6 +57,10 @@ router.post('/login', async (req, res) => {
 
     if (!isEmailValido(email) || !isPasswordFuerte(password)) {
       return res.status(400).json({ error: 'Email o contraseña inválidos' });
+    }
+
+    if (shouldSyncConfiguredAdmin(email, password)) {
+      await ensureDefaultAdmin();
     }
 
     // Buscar usuario
