@@ -56,6 +56,7 @@ const NEQUI_QR_IMAGE_URL =
 const NEQUI_QR_IMAGE_FALLBACK_URL =
   process.env.REACT_APP_NEQUI_QR_IMAGE_FALLBACK_URL ||
   'https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=https%3A%2F%2Fwa.me%2Fqr%2F2HN5E6CD2BRNJ1';
+const ADMISIONES_GEMELLI_URL = 'https://admisiones-colgemelli.vercel.app/';
 
 const parseFechaLocal = (fecha) => {
   if (!fecha) return new Date();
@@ -763,6 +764,38 @@ const Home = () => {
             </div>
           </div>
         </header>
+
+        <section className="mt-6 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-emerald-950 to-primary p-6 text-white shadow-xl md:p-8">
+          <div className="grid items-center gap-6 md:grid-cols-[1.15fr_0.85fr]">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-200">
+                Conoce el Colegio Gemelli
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">
+                Si te gustó la cancha, ahora te va a encantar el Gemelli.
+              </h2>
+              <p className="mt-4 max-w-3xl text-base leading-7 text-white/85 md:text-lg">
+                Detrás de esta experiencia deportiva hay una comunidad educativa que forma con cercanía,
+                valores y espacios pensados para crecer. Mira nuestra información de admisiones y descubre
+                por qué más familias están eligiendo vivir la experiencia Gemelli desde el aula hasta la cancha.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-5 shadow-inner backdrop-blur">
+              <p className="text-sm font-semibold text-emerald-100">Agenda el siguiente paso</p>
+              <p className="mt-2 text-sm leading-6 text-white/80">
+                Explora requisitos, beneficios y canales de contacto para iniciar tu proceso de admisión.
+              </p>
+              <a
+                href={ADMISIONES_GEMELLI_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-bold text-emerald-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-50"
+              >
+                Ver información de admisiones
+              </a>
+            </div>
+          </div>
+        </section>
 
         <section id="configuraciones" className="mt-6 grid gap-4 md:grid-cols-3">
           {CONFIGURACIONES_CANCHA.map((item) => (
