@@ -48,6 +48,33 @@ const CONFIGURACIONES_CANCHA = [
   }
 ];
 
+const EXPERIENCIAS_DESTACADAS = [
+  {
+    kicker: 'Reserva fluida',
+    titulo: 'El partido empieza desde una página que se siente premium.',
+    descripcion:
+      'Una narrativa por escenas guía a las familias desde la disponibilidad hasta el pago, con bloques amplios, contraste suave y movimiento sutil inspirado en lanzamientos de producto.',
+    metricas: ['7 días visibles', 'Pago Nequi', 'Aprobación admin'],
+    tono: 'from-slate-950 via-emerald-950 to-black'
+  },
+  {
+    kicker: 'Formato flexible',
+    titulo: 'Tres canchas F7 o una experiencia F7 + F9 en segundos.',
+    descripcion:
+      'Los slides explican las configuraciones como momentos de juego: entrenamientos, torneos, partidos familiares y eventos con una lectura clara en móvil y escritorio.',
+    metricas: ['3 x F7', 'F7 + F9', '1–3 horas'],
+    tono: 'from-emerald-900 via-teal-950 to-slate-950'
+  },
+  {
+    kicker: 'Comunidad Gemelli',
+    titulo: 'La cancha conecta deporte, colegio y admisiones.',
+    descripcion:
+      'La estética tipo Apple mantiene el foco en mensajes grandes, llamados a la acción limpios y tarjetas con profundidad para reforzar confianza.',
+    metricas: ['Familias', 'Admisiones', 'Tarifas claras'],
+    tono: 'from-zinc-950 via-slate-900 to-emerald-950'
+  }
+];
+
 const NEQUI_PAYMENT_NUMBER = '3203768582';
 const NEQUI_QR_LINK = process.env.REACT_APP_NEQUI_QR_LINK || 'https://wa.me/qr/2HN5E6CD2BRNJ1';
 const NEQUI_QR_IMAGE_URL =
@@ -714,7 +741,7 @@ const Home = () => {
           </Link>
         </nav>
 
-        <header className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+        <header className="apple-reveal overflow-hidden rounded-[2rem] bg-white shadow-sm">
           <div className="grid items-center gap-10 px-6 py-12 md:grid-cols-[1.05fr_0.95fr] md:px-12 lg:px-16 lg:py-16">
             <div className="text-center md:text-left">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary">Reserva pública</p>
@@ -745,7 +772,7 @@ const Home = () => {
                 </Link>
               </div>
             </div>
-            <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] bg-gray-950 p-6 text-white shadow-2xl">
+            <div className="hero-device relative min-h-[360px] overflow-hidden rounded-[2rem] bg-gray-950 p-6 text-white shadow-2xl">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.45),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.38),transparent_25%)]" />
               <div className="relative flex h-full min-h-[320px] flex-col justify-between rounded-[1.5rem] border border-white/15 bg-white/10 p-5 backdrop-blur">
                 <div className="flex items-center justify-between text-sm text-white/80">
@@ -765,7 +792,40 @@ const Home = () => {
           </div>
         </header>
 
-        <section className="mt-6 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-emerald-950 to-primary p-6 text-white shadow-xl md:p-8">
+        <section className="apple-reveal mt-6 rounded-[2rem] bg-[#fbfbfd] px-4 py-10 shadow-sm md:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-primary">Una mirada más cercana</p>
+            <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em] text-gray-950 md:text-6xl">
+              Slides grandes, movimiento suave y toda la información sin fricción.
+            </h2>
+          </div>
+          <div className="premium-slider mt-10 flex snap-x gap-5 overflow-x-auto pb-4">
+            {EXPERIENCIAS_DESTACADAS.map((slide, index) => (
+              <article
+                key={slide.titulo}
+                className={`premium-slide min-w-[86%] snap-center overflow-hidden rounded-[2rem] bg-gradient-to-br ${slide.tono} p-6 text-white shadow-2xl sm:min-w-[68%] lg:min-w-[42%]`}
+                style={{ '--slide-delay': `${index * 140}ms` }}
+              >
+                <div className="flex min-h-[430px] flex-col justify-between">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-200">{slide.kicker}</p>
+                    <h3 className="mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">{slide.titulo}</h3>
+                    <p className="mt-5 max-w-xl text-lg leading-8 text-white/76">{slide.descripcion}</p>
+                  </div>
+                  <div className="mt-10 grid gap-3 sm:grid-cols-3">
+                    {slide.metricas.map((metrica) => (
+                      <span key={metrica} className="rounded-full border border-white/15 bg-white/10 px-4 py-3 text-center text-sm font-semibold backdrop-blur">
+                        {metrica}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="apple-reveal mt-6 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-emerald-950 to-primary p-6 text-white shadow-xl md:p-8">
           <div className="grid items-center gap-6 md:grid-cols-[1.15fr_0.85fr]">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-200">
@@ -797,9 +857,13 @@ const Home = () => {
           </div>
         </section>
 
-        <section id="configuraciones" className="mt-6 grid gap-4 md:grid-cols-3">
-          {CONFIGURACIONES_CANCHA.map((item) => (
-            <article key={item.titulo} className="rounded-[1.75rem] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+        <section id="configuraciones" className="apple-reveal mt-6 grid gap-4 md:grid-cols-3">
+          {CONFIGURACIONES_CANCHA.map((item, index) => (
+            <article
+              key={item.titulo}
+              className="feature-card rounded-[1.75rem] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              style={{ '--slide-delay': `${index * 120}ms` }}
+            >
               <div className="mb-8 inline-flex rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900">
                 {item.detalle}
               </div>
@@ -809,7 +873,7 @@ const Home = () => {
           ))}
         </section>
 
-        <section className="mt-6 rounded-[1.75rem] bg-white p-6 shadow-sm md:p-8">
+        <section className="apple-reveal mt-6 rounded-[1.75rem] bg-white p-6 shadow-sm md:p-8">
           <div className="grid gap-6 md:grid-cols-2">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Horarios y tarifas vigentes</p>
@@ -835,7 +899,7 @@ const Home = () => {
           </div>
         </section>
               
-        <div id="reservar" className="mt-8 grid md:grid-cols-2 gap-8 items-start">
+        <div id="reservar" className="apple-reveal mt-8 grid md:grid-cols-2 gap-8 items-start">
           <div className="rounded-[1.75rem] bg-white p-6 shadow-sm md:p-8 order-1">
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Reservar un horario</h2>
 
