@@ -30,24 +30,6 @@ const TIPOS_CANCHA = {
 const TARIFA_FUTBOL_9_PUBLICO = 260000;
 const TARIFA_FUTBOL_9_GEMELLI = 230000;
 
-const CONFIGURACIONES_CANCHA = [
-  {
-    titulo: 'Tres canchas de fútbol 7',
-    descripcion: 'Agenda partidos simultáneos, torneos cortos o entrenamientos por grupos con la misma experiencia premium.',
-    detalle: '3 x F7'
-  },
-  {
-    titulo: 'Una cancha de fútbol 7 + una de fútbol 9',
-    descripcion: 'Une espacios para un formato más amplio cuando el partido o el evento pide más recorrido.',
-    detalle: 'F7 + F9'
-  },
-  {
-    titulo: 'Reserva flexible por horas',
-    descripcion: 'Selecciona bloques consecutivos y deja la solicitud pendiente para aprobación del equipo de cancha.',
-    detalle: '1–3 h'
-  }
-];
-
 const EXPERIENCIAS_DESTACADAS = [
   {
     kicker: 'Reserva fluida',
@@ -762,12 +744,6 @@ const Home = () => {
                 >
                   Reservar ahora
                 </a>
-                <a
-                  href="#configuraciones"
-                  className="rounded-full bg-gray-100 px-6 py-3 text-base font-semibold text-gray-900 transition hover:bg-gray-200"
-                >
-                  Ver configuraciones
-                </a>
                 <Link
                   to="/como-llegar"
                   className="rounded-full border border-primary/30 bg-white px-6 py-3 text-base font-semibold text-primary transition hover:border-primary hover:bg-emerald-50"
@@ -859,22 +835,6 @@ const Home = () => {
               </a>
             </div>
           </div>
-        </section>
-
-        <section id="configuraciones" className="apple-reveal mt-6 grid gap-4 md:grid-cols-3">
-          {CONFIGURACIONES_CANCHA.map((item, index) => (
-            <article
-              key={item.titulo}
-              className="feature-card rounded-[1.75rem] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-              style={{ '--slide-delay': `${index * 120}ms` }}
-            >
-              <div className="mb-8 inline-flex rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900">
-                {item.detalle}
-              </div>
-              <h2 className="text-2xl font-semibold tracking-tight text-gray-950">{item.titulo}</h2>
-              <p className="mt-3 text-gray-600">{item.descripcion}</p>
-            </article>
-          ))}
         </section>
 
         <section className="apple-reveal mt-6 rounded-[1.75rem] bg-white p-6 shadow-sm md:p-8">
