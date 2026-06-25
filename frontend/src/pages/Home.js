@@ -736,14 +736,12 @@ const Home = () => {
                 >
                   Ver configuraciones
                 </a>
-                <a
-                  href="https://maps.app.goo.gl/zy5UyJU9hKmyeLbG6"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/como-llegar"
                   className="rounded-full border border-primary/30 bg-white px-6 py-3 text-base font-semibold text-primary transition hover:border-primary hover:bg-emerald-50"
                 >
                   Cómo llegar
-                </a>
+                </Link>
               </div>
             </div>
             <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] bg-gray-950 p-6 text-white shadow-2xl">

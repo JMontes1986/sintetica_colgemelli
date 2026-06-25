@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 // Páginas
 import Home from './pages/Home';
 import Login from './pages/Login';
+import ComoLlegar from './pages/ComoLlegar';
 import DashboardCancha from './pages/DashboardCancha';
 import DashboardAdmin from './pages/DashboardAdmin';
 import Diagnostico from './pages/Diagnostico';
@@ -39,6 +40,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/como-llegar" element={<ComoLlegar />} />
           <Route path="/diagnostico" element={<Diagnostico />} />
   
           <Route
