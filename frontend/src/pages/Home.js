@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { reservasAPI } from '../services/api';
 import { format } from 'date-fns';
@@ -252,8 +252,12 @@ const Home = () => {
   const [errorDias, setErrorDias] = useState('');
   const [resumenReserva, setResumenReserva] = useState(null);
   const [qrImageSrc, setQrImageSrc] = useState(NEQUI_QR_IMAGE_URL);
+  const cacheKeyDisponibilidad = useCallback(
+    (fecha, tipoCancha = formData.tipo_cancha) => `${tipoCancha}:${fecha}`,
+    [formData.tipo_cancha]
+  );
   const [disponibilidadCache, setDisponibilidadCache] = useState({
-    [today]: {
+    [`${TIPOS_CANCHA.FUTBOL_7}:${today}`]: {
       horasDisponibles: DEFAULT_HORARIO.horas,
       horasOcupadas: [],
       horasPendientes: [],
@@ -306,7 +310,7 @@ const Home = () => {
   const cargarDisponibilidad = async (fecha) => {
     try {
       setConsultando(true);
-      const response = await reservasAPI.obtenerDisponibilidad(fecha);
+      const response = await reservasAPI.obtenerDisponibilidad(fecha, { tipo_cancha: formData.tipo_cancha });
       const horasOcupadasAPI = response.data.horasOcupadas || [];
       const horasPendientesAPI = response.data.horasPendientes || [];
       const horario = response.data.horario?.horas?.length
@@ -328,7 +332,7 @@ const Home = () => {
 
       setDisponibilidadCache((prev) => ({
         ...prev,
-        [fecha]: {
+        [cacheKeyDisponibilidad(fecha)]: {
           horasDisponibles: horasSeleccionables,
           horasOcupadas: horasOcupadasAPI,
           horasPendientes: horasPendientesAPI,
@@ -368,7 +372,7 @@ const Home = () => {
       }));
       setDisponibilidadCache((prev) => ({
         ...prev,
-        [fecha]: {
+        [cacheKeyDisponibilidad(fecha)]: {
           horasDisponibles: DEFAULT_HORARIO.horas,
           horasOcupadas: [],
           horasPendientes: [],
@@ -384,7 +388,7 @@ const Home = () => {
   useEffect(() => {
     cargarDisponibilidad(formData.fecha);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.fecha]);
+  }, [formData.fecha, formData.tipo_cancha]);
 
   useEffect(() => {
     let cancelado = false;
@@ -405,13 +409,13 @@ const Home = () => {
       try {
         const resultados = await Promise.all(
           dias.map(async (dia) => {
-                    const cacheDia = disponibilidadCache[dia.fechaValor];
+                    const cacheDia = disponibilidadCache[cacheKeyDisponibilidad(dia.fechaValor)];
                 if (cacheDia) {
                   return { ...dia, ...cacheDia };
                 }
             
             try {
-              const response = await reservasAPI.obtenerDisponibilidad(dia.fechaValor);
+              const response = await reservasAPI.obtenerDisponibilidad(dia.fechaValor, { tipo_cancha: formData.tipo_cancha });
              const horario = response.data?.horario?.horas?.length
                 ? {
                     horas: response.data.horario.horas,
@@ -430,7 +434,7 @@ const Home = () => {
 
               setDisponibilidadCache((prev) => ({
                 ...prev,
-                [dia.fechaValor]: diaData
+                [cacheKeyDisponibilidad(dia.fechaValor)]: diaData
               }));
 
               return { ...dia, ...diaData };
@@ -445,7 +449,7 @@ const Home = () => {
                         
               setDisponibilidadCache((prev) => ({
                 ...prev,
-                [dia.fechaValor]: diaData
+                [cacheKeyDisponibilidad(dia.fechaValor)]: diaData
               }));
 
               return { ...dia, ...diaData };
@@ -476,7 +480,7 @@ const Home = () => {
       cancelado = true;
       clearTimeout(timeout);
     };
-  }, [disponibilidadCache]);
+  }, [cacheKeyDisponibilidad, disponibilidadCache, formData.tipo_cancha]);
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -968,7 +972,7 @@ const Home = () => {
 
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
                 <p className="text-gray-800 font-semibold">Elige el tipo de cancha</p>
-                <p className="mt-1 text-sm text-gray-600">El valor se calcula automáticamente según tu elección y la validación Gemellista.</p>
+                <p className="mt-1 text-sm text-gray-600">El valor y la disponibilidad se calculan según tu elección y la capacidad simultánea de las canchas.</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <label className={`cursor-pointer rounded-xl border p-4 transition ${formData.tipo_cancha === TIPOS_CANCHA.FUTBOL_7 ? 'border-primary bg-green-50 ring-2 ring-primary/20' : 'border-gray-200 bg-white hover:border-primary'}`}>
                     <input
@@ -1128,7 +1132,7 @@ const Home = () => {
                       </option>
                     ))}
                   </select>
-                  <p className="text-sm text-gray-500 mt-1">Selecciona hasta {DURACION_MAXIMA} horas consecutivas.</p>
+                  <p className="text-sm text-gray-500 mt-1">Selecciona hasta {DURACION_MAXIMA} horas consecutivas; cada hora puede tener varias reservas si aún hay cancha disponible.</p>
                 </div>
               </div>
 
@@ -1142,7 +1146,7 @@ const Home = () => {
                 }
                 className="w-full rounded-full bg-primary py-3 font-semibold text-white shadow-lg shadow-emerald-100 transition hover:bg-emerald-600 disabled:bg-gray-400"
               >
-                {enviando ? 'Reservando...' : 'Reservar' }
+                {enviando ? 'Reservando...' : `Reservar ${formData.duracion} hora${formData.duracion > 1 ? 's' : ''}` }
               </button>
             </form>
           </div>

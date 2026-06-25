@@ -17,6 +17,11 @@ const METODOS_PAGO_VALIDOS = ['Nequi', 'Efectivo'];
 const MAX_HORAS_CONSECUTIVAS = 3;
 const ESTADOS_GEMELLISTA = ['No aplica', 'Pendiente', 'Aprobado', 'Rechazado'];
 const TIPOS_CANCHA_VALIDOS = ['futbol_7', 'futbol_9'];
+const CAPACIDAD_CANCHAS_F7 = 3;
+const UNIDADES_CANCHA = {
+  futbol_7: 1,
+  futbol_9: 2
+};
 const MAX_SEMANAS_RECURRENTES = 52;
 const DIAS_SEMANA_VALIDOS = new Set([0, 1, 2, 3, 4, 5, 6]);
 const MAKE_WEBHOOK_URL =
@@ -139,6 +144,20 @@ const construirFechasRecurrentes = ({ fechaBase, diasSemana, semanas }) => {
 
 const ordenarHorasPorHorario = (horas, horario) =>
   horas.slice().sort((a, b) => horario.indexOf(a) - horario.indexOf(b));
+
+const obtenerUnidadesCancha = (tipoCancha) => UNIDADES_CANCHA[tipoCancha] || UNIDADES_CANCHA.futbol_7;
+
+const calcularUsoPorHora = (reservas = []) =>
+  reservas.reduce((acumulado, reserva) => {
+    const hora = normalizarHora(reserva.hora);
+    acumulado[hora] = (acumulado[hora] || 0) + obtenerUnidadesCancha(reserva.tipo_cancha);
+    return acumulado;
+  }, {});
+
+const obtenerHorasSinCapacidad = (usoPorHora, horas, tipoCancha) => {
+  const unidadesSolicitadas = obtenerUnidadesCancha(tipoCancha);
+  return horas.filter((hora) => (usoPorHora[hora] || 0) + unidadesSolicitadas > CAPACIDAD_CANCHAS_F7);
+};
 
 const sonHorasConsecutivas = (horas, horario) => {
   if (horas.length <= 1) return true;
@@ -307,18 +326,20 @@ router.post('/crear', async (req, res) => {
 
     const { data: reservasOcupadas, error: errorReservaExistente } = await supabase
       .from('reservas')
-      .select('hora')
+      .select('hora, tipo_cancha')
       .eq('fecha', fecha)
       .in('estado', ['Aprobado', 'Jugado'])
       .in('hora', horasOrdenadas);
 
     if (errorReservaExistente) throw errorReservaExistente;
 
-    if (reservasOcupadas?.length) {
-      const horasOcupadas = reservasOcupadas.map((reserva) => normalizarHora(reserva.hora));
+    const usoPorHora = calcularUsoPorHora(reservasOcupadas || []);
+    const horasSinCapacidad = obtenerHorasSinCapacidad(usoPorHora, horasOrdenadas, tipo_cancha);
+
+    if (horasSinCapacidad.length) {
       return res
         .status(400)
-        .json({ error: `Ya existe una reserva para: ${horasOcupadas.join(', ')}` });
+        .json({ error: `No hay canchas disponibles para: ${horasSinCapacidad.join(', ')}` });
     }
 
     const estado_gemellista = es_familia_gemellista ? 'Pendiente' : 'No aplica';
@@ -496,16 +517,18 @@ router.post('/manual', verificarToken, verificarRol('cancha', 'admin'), async (r
 
       const { data: existentes, error: errorReservaExistente } = await supabase
         .from('reservas')
-        .select('hora')
+        .select('hora, tipo_cancha')
         .eq('fecha', fechaReserva)
         .in('estado', ['Aprobado', 'Jugado'])
         .in('hora', horasOrdenadas);
 
       if (errorReservaExistente) throw errorReservaExistente;
 
-      if (existentes?.length) {
-        const horasOcupadas = existentes.map((reserva) => normalizarHora(reserva.hora));
-        return res.status(400).json({ error: `Ya existe una reserva para ${fechaReserva}: ${horasOcupadas.join(', ')}` });
+      const usoPorHora = calcularUsoPorHora(existentes || []);
+      const horasSinCapacidad = obtenerHorasSinCapacidad(usoPorHora, horasOrdenadas, tipo_cancha);
+
+      if (horasSinCapacidad.length) {
+        return res.status(400).json({ error: `No hay canchas disponibles para ${fechaReserva}: ${horasSinCapacidad.join(', ')}` });
       }
     }
 
@@ -569,6 +592,9 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
   try {
     const supabase = getSupabase();
     const { fecha } = req.params;
+    const tipoCanchaConsulta = TIPOS_CANCHA_VALIDOS.includes(sanitizarTexto(req.query?.tipo_cancha))
+      ? sanitizarTexto(req.query.tipo_cancha)
+      : 'futbol_7';
 
     if (!esFechaValida(fecha)) {
       return res.status(400).json({ error: 'Fecha inválida. Usa formato YYYY-MM-DD.' });
@@ -580,19 +606,24 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
     // Obtener reservas existentes para esa fecha
     const { data: reservasExistentes, error } = await supabase
       .from('reservas')
-      .select('hora, estado')
+      .select('hora, estado, tipo_cancha')
       .eq('fecha', fecha);
 
     if (error) throw error;
 
-    const horasOcupadas = (reservasExistentes || [])
-      .filter((reserva) => reserva.estado === 'Aprobado' || reserva.estado === 'Jugado')
-      .map((reserva) => normalizarHora(reserva.hora));
+    const reservasConfirmadas = (reservasExistentes || [])
+      .filter((reserva) => reserva.estado === 'Aprobado' || reserva.estado === 'Jugado');
+    const usoPorHora = calcularUsoPorHora(reservasConfirmadas);
+    const horasOcupadas = horariosDisponibles.filter(
+      (hora) => (usoPorHora[hora] || 0) >= CAPACIDAD_CANCHAS_F7
+    );
     const horasPendientes = (reservasExistentes || [])
       .filter((reserva) => reserva.estado === 'Pendiente')
       .map((reserva) => normalizarHora(reserva.hora));
     const horasDisponibles = horariosDisponibles.filter(
-      (h) => !horasOcupadas.includes(h) && !esHorarioEnElPasado(fecha, h)
+      (h) =>
+        (usoPorHora[h] || 0) + obtenerUnidadesCancha(tipoCanchaConsulta) <= CAPACIDAD_CANCHAS_F7 &&
+        !esHorarioEnElPasado(fecha, h)
     );
 
     res.json({
@@ -600,6 +631,11 @@ router.get('/disponibilidad/:fecha', async (req, res) => {
       horasDisponibles,
       horasOcupadas,
       horasPendientes,
+      capacidad: {
+        totalUnidadesF7: CAPACIDAD_CANCHAS_F7,
+        tipoCancha: tipoCanchaConsulta,
+        usoPorHora
+      },
       horario: {
         horaApertura: `${horarioDelDia.horaApertura.toString().padStart(2, '0')}:00`,
         horaCierre: `${horarioDelDia.horaCierre.toString().padStart(2, '0')}:00`,
@@ -764,7 +800,7 @@ router.patch('/:id/reprogramar', verificarToken, verificarRol('cancha', 'admin')
 
     const { data: reservaActual, error: errorReservaActual } = await supabase
       .from('reservas')
-      .select('id')
+      .select('id, tipo_cancha')
       .eq('id', id)
       .single();
 
@@ -787,17 +823,19 @@ router.patch('/:id/reprogramar', verificarToken, verificarRol('cancha', 'admin')
 
     const { data: conflicto, error: errorConflicto } = await supabase
       .from('reservas')
-      .select('id')
+      .select('id, hora, tipo_cancha')
       .eq('fecha', fecha)
       .eq('hora', hora)
       .in('estado', ['Aprobado', 'Jugado'])
-      .neq('id', id)
-      .limit(1);
+      .neq('id', id);
 
     if (errorConflicto) throw errorConflicto;
 
-    if (conflicto?.length) {
-      return res.status(400).json({ error: 'Ya existe una reserva para esa fecha y hora.' });
+    const usoPorHora = calcularUsoPorHora(conflicto || []);
+    const horasSinCapacidad = obtenerHorasSinCapacidad(usoPorHora, [hora], reservaActual.tipo_cancha);
+
+    if (horasSinCapacidad.length) {
+      return res.status(400).json({ error: 'No hay canchas disponibles para esa fecha y hora.' });
     }
 
     const { data, error } = await supabase

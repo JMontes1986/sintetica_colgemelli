@@ -78,7 +78,7 @@ export const reservasAPI = {
   registrarPago: (id, payload) => api.patch(`/reservas/${id}/pago`, payload),
   crearManual: (datos) => api.post('/reservas/manual', datos),
   eliminar: (id) => api.delete(`/reservas/${id}`),
-  obtenerDisponibilidad: (fecha) => api.get(`/reservas/disponibilidad/${fecha}`)
+  obtenerDisponibilidad: (fecha, params) => api.get(`/reservas/disponibilidad/${fecha}`, { params })
 };
 
 // API de Estadísticas
