@@ -7,7 +7,11 @@
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["reservas", "cancha", "backend"],
+  "keywords": [
+    "reservas",
+    "cancha",
+    "backend"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -24,5 +28,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
+  },
+  "overrides": {
+    "body-parser": "1.20.9"
   }
 }
