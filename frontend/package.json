@@ -39,5 +39,8 @@
     "tailwindcss": "^3.4.0",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32"
+  },
+  "overrides": {
+    "body-parser": "1.20.9"
   }
 }
